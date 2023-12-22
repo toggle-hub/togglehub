@@ -22,17 +22,17 @@ func (s *Server) get(path string, handlers ...FiberHandlerFunc) {
 	s.app.Get(path, handlers...)
 }
 
-func (s *Server) post(path string, handlers ...FiberHandlerFunc) {
-	s.app.Post(path, handlers...)
-}
+// func (s *Server) post(path string, handlers ...FiberHandlerFunc) {
+// 	s.app.Post(path, handlers...)
+// }
 
-func (s *Server) put(path string, handlers ...FiberHandlerFunc) {
-	s.app.Put(path, handlers...)
-}
+// func (s *Server) put(path string, handlers ...FiberHandlerFunc) {
+// 	s.app.Put(path, handlers...)
+// }
 
-func (s *Server) patch(path string, handlers ...FiberHandlerFunc) {
-	s.app.Patch(path, handlers...)
-}
+// func (s *Server) patch(path string, handlers ...FiberHandlerFunc) {
+// 	s.app.Patch(path, handlers...)
+// }
 
 func normalizePort(port string) string {
 	if []byte(port)[0] != ':' {
