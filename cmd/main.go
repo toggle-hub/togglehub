@@ -24,8 +24,7 @@ func main() {
 	conn, err := sqlx.Open("pgx", connStr)
 
 	if err != nil {
-		conn.Close()
-		log.Fatal(err)
+		log.Panic(err)
 	}
 
 	defer conn.Close()
