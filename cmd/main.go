@@ -13,12 +13,12 @@ import (
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 
 	connStr, err := config.GetConnectionString()
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 
 	conn, err := sqlx.Open("pgx", connStr)
@@ -30,5 +30,5 @@ func main() {
 	defer conn.Close()
 	app := api.NewServer(os.Getenv("PORT"), conn)
 
-	log.Fatal(app.Listen())
+	log.Panic(app.Listen())
 }
