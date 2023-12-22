@@ -8,8 +8,7 @@ import (
 )
 
 func GetConnectionString() (string, error) {
-	err := godotenv.Load()
-	if err != nil {
+	if err := godotenv.Load(); err != nil {
 		return "", err
 	}
 
