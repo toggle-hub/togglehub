@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api"
+	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -17,7 +18,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), config.DB_CONNECTION_TIMEOUT*time.Second)
 	defer cancel()
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("DATABASE_URL")))
