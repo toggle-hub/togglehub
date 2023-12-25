@@ -1,36 +1,34 @@
 package api
 
 import (
-	handler "github.com/Roll-Play/togglelabs/pkg/api/handlers"
-	"github.com/gofiber/fiber/v2"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type FiberHandlerFunc = func(c *fiber.Ctx) error
-
 type Server struct {
-	app  *fiber.App
+	app  *echo.Echo
 	port string
 	db   *mongo.Database
 }
 
 func (s *Server) Listen() error {
-	return s.app.Listen(s.port)
+	return s.app.Start(s.port)
 }
 
-func (s *Server) get(path string, handlers ...FiberHandlerFunc) {
-	s.app.Get(path, handlers...)
+func (s *Server) get(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
+	s.app.GET(path, handler, middlewares...)
 }
 
-// func (s *Server) post(path string, handlers ...FiberHandlerFunc) {
+// func (s *Server) post(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
 // 	s.app.Post(path, handlers...)
 // }
 
-// func (s *Server) put(path string, handlers ...FiberHandlerFunc) {
+// func (s *Server) put(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
 // 	s.app.Put(path, handlers...)
 // }
 
-// func (s *Server) patch(path string, handlers ...FiberHandlerFunc) {
+// func (s *Server) patch(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
 // 	s.app.Patch(path, handlers...)
 // }
 
@@ -43,10 +41,7 @@ func normalizePort(port string) string {
 }
 
 func NewServer(port string, db *mongo.Database) *Server {
-	app := fiber.New(fiber.Config{
-		AppName:       "togglelabs-api",
-		CaseSensitive: true,
-	})
+	app := echo.New()
 
 	server := &Server{
 		app:  app,
@@ -59,9 +54,8 @@ func NewServer(port string, db *mongo.Database) *Server {
 }
 
 func registerRoutes(server *Server) {
-	server.get("/healthz", handler.HealthHandler)
-}
+	server.get("/healthz", handlers.HealthHandler)
 
-func NewHandler(path string, fn FiberHandlerFunc) map[string]FiberHandlerFunc {
-	return map[string]FiberHandlerFunc{path: fn}
+	exampleHandler := handlers.NewExampleRouter(server.db)
+	server.get("/example", exampleHandler.GetExamples)
 }
