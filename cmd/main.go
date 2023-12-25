@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
+	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api"
 	"github.com/Roll-Play/togglelabs/pkg/config"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
@@ -16,19 +18,16 @@ func main() {
 		log.Panic(err)
 	}
 
-	connStr, err := config.GetConnectionString()
+	ctx, cancel := context.WithTimeout(context.Background(), config.DBConnectionTimeout*time.Second)
+	defer cancel()
+
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("DATABASE_URL")))
 	if err != nil {
 		log.Panic(err)
 	}
 
-	conn, err := sqlx.Open("pgx", connStr)
-
-	if err != nil {
-		log.Panic(err)
-	}
-
-	defer conn.Close()
-	app := api.NewServer(os.Getenv("PORT"), conn)
+	db := client.Database("testing")
+	app := api.NewServer(os.Getenv("PORT"), db)
 
 	log.Panic(app.Listen())
 }

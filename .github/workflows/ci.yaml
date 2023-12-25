@@ -61,34 +61,9 @@ jobs:
 
       - name: Build
         run: go build -v ./cmd/main.go
-
   test:
     name: Test
     runs-on: ubuntu-latest
-    env:
-      DB_HOST: localhost
-      DB_USER: root
-      DB_PASSWORD: root
-      DB_NAME: togglelabs
-      DB_URL: postgresql://root:root@localhost:5432/togglelabs_test?sslmode=disable
-      DOCKER: true
-
-    services:
-      postgres:
-        image: postgres
-
-        env:
-          POSTGRES_PASSWORD: root
-          POSTGRES_USER: root
-          POSTGRES_DB: togglelabs_test
-
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
 
     steps:
       - name: Checkout code
@@ -99,8 +74,5 @@ jobs:
         with:
           go-version: "1.20"
 
-      # - name: Install dependencies
-      #   run: go get -v -t -d ./...
-
-      - name: Run tests
-        run: go test -v ./...
+      - name: Test
+        run: go test ./...
