@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Roll-Play/togglelabs/pkg/api_utils"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/api_utils"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
@@ -40,7 +40,7 @@ func (eh *ExampleHandler) GetExamples(c echo.Context) error {
 	pageQuery := c.QueryParam("page")
 	limitQuery := c.QueryParam("page_size")
 
-	page, limit := api_utils.GetPaginationParams(pageQuery, limitQuery)
+	page, limit := apiutils.GetPaginationParams(pageQuery, limitQuery)
 
 	collection := eh.db.Collection("example")
 
