@@ -3,7 +3,7 @@ package api
 import (
 	handler "github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/gofiber/fiber/v2"
-	"github.com/jmoiron/sqlx"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type FiberHandlerFunc = func(c *fiber.Ctx) error
@@ -11,7 +11,7 @@ type FiberHandlerFunc = func(c *fiber.Ctx) error
 type Server struct {
 	app  *fiber.App
 	port string
-	conn *sqlx.DB
+	db   *mongo.Database
 }
 
 func (s *Server) Listen() error {
@@ -42,7 +42,7 @@ func normalizePort(port string) string {
 	return port
 }
 
-func NewServer(port string, conn *sqlx.DB) *Server {
+func NewServer(port string, db *mongo.Database) *Server {
 	app := fiber.New(fiber.Config{
 		AppName:       "togglelabs-api",
 		CaseSensitive: true,
@@ -51,7 +51,7 @@ func NewServer(port string, conn *sqlx.DB) *Server {
 	server := &Server{
 		app:  app,
 		port: normalizePort(port),
-		conn: conn,
+		db:   db,
 	}
 
 	registerRoutes(server)

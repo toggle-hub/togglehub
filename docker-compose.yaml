@@ -1,47 +1,16 @@
 services:
   togglelabsdb:
-    image: postgres:16-alpine
-    hostname: postgres
-    environment:
-      POSTGRES_USER: "togglelabs"
-      POSTGRES_PASSWORD: "togglelabs"
-      POSTGRES_DB: "togglelabs"
-    # volumes:
-    #   - ./postgres:/var/lib/postgresql/data:z
+    image: mongo:latest
     container_name: togglelabs-db
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     ports:
-      - "5432:5432"
+      - "27017:27017"
     expose:
-      - 5432
-    networks:
-      - togglelabs
-  migrate:
-    image: migrate/migrate:v4.15.2
-    # profiles: ["tools"]
-    volumes:
-      - ./migrations:/migrations
-    # env_file:
-    #   - ./.env
-    environment:
-      - DB_URL=postgresql://togglelabs:togglelabs@postgres:5432/togglelabs?sslmode=disable
-    entrypoint:
-      [
-        "migrate",
-        "-path",
-        "/migrations",
-        "-database",
-        "postgresql://togglelabs:togglelabs@postgres:5432/togglelabs?sslmode=disable",
-      ]
-    command: ["up"]
-    depends_on:
-      togglelabsdb:
-        condition: service_healthy
-    restart: on-failure
+      - 27017
+    # environment:
+    #   MONGO_INITDB_ROOT_USERNAME: togglelabs
+    #   MONGO_INITDB_ROOT_PASSWORD: togglelabs
+    # volumes:
+    #   - mongodb_data:/data/db
     networks:
       - togglelabs
 networks:
