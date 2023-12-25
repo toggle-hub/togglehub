@@ -26,7 +26,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	db := client.Database("testing")
+	db := client.Database(os.Getenv("DATABASE"))
 	app := api.NewServer(os.Getenv("PORT"), db)
 
 	log.Panic(app.Listen())
