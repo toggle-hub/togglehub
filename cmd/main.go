@@ -18,7 +18,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), config.DB_CONNECTION_TIMEOUT*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), config.DbConnectionTimeout*time.Second)
 	defer cancel()
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("DATABASE_URL")))
