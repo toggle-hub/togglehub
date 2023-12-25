@@ -1,3 +1,3 @@
 package config
 
-const DbConnectionTimeout = 10
+const DBConnectionTimeout = 10
