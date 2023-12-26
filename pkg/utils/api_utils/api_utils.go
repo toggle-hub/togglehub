@@ -3,6 +3,7 @@ package apiutils
 import (
 	"strconv"
 
+	"github.com/Roll-Play/togglelabs/pkg/config"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -25,7 +26,7 @@ func GetPaginationParams(page, limit string) (int, int) {
 }
 
 func EncryptPassword(password string) (string, error) {
-	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 8)
+	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), config.BCryptCost)
 	if err != nil {
 		return "", err
 	}
