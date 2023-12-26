@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -16,9 +17,8 @@ import (
 )
 
 type ExampleTestSuite struct {
-	suite.Suite
-	server *echo.Echo
-	db     *mongo.Database
+	testutils.DefaultTestSuite
+	db *mongo.Database
 }
 
 func (suite *ExampleTestSuite) SetupTest() {
@@ -29,7 +29,7 @@ func (suite *ExampleTestSuite) SetupTest() {
 		panic(err)
 	}
 	suite.db = client.Database("togglelabs_test")
-	suite.server = echo.New()
+	suite.Server = echo.New()
 }
 
 func (suite *ExampleTestSuite) AfterTest(_, _ string) {
@@ -42,10 +42,10 @@ func (suite *ExampleTestSuite) TearDownSuite() {
 	if err := suite.db.Client().Disconnect(context.Background()); err != nil {
 		panic(err)
 	}
-	suite.server.Close()
+	suite.Server.Close()
 }
 
-func (suite *ExampleTestSuite) TestExample() {
+func (suite *ExampleTestSuite) TestExampleHandlerReturnsList() {
 	t := suite.T()
 	collection := suite.db.Collection("example")
 	r := handlers.ExampleRecord{
@@ -61,7 +61,7 @@ func (suite *ExampleTestSuite) TestExample() {
 	rec := httptest.NewRecorder()
 
 	h := handlers.NewExampleRouter(suite.db)
-	c := suite.server.NewContext(req, rec)
+	c := suite.Server.NewContext(req, rec)
 	var jsonRes handlers.ExampleListResponse
 
 	assert.NoError(t, h.GetExamples(c))
@@ -75,6 +75,38 @@ func (suite *ExampleTestSuite) TestExample() {
 		Page:     1,
 		PageSize: 10,
 		Total:    1,
+	}, jsonRes)
+}
+
+func (suite *ExampleTestSuite) TestExampleHandlerReturnsEmptyList() {
+	t := suite.T()
+
+	collection := suite.db.Collection("example")
+	r := handlers.ExampleRecord{
+		Name: "fizi",
+	}
+
+	_, err := collection.InsertOne(context.Background(), r)
+
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/example?page=2", nil)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+
+	h := handlers.NewExampleRouter(suite.db)
+	c := suite.Server.NewContext(req, rec)
+	var jsonRes handlers.ExampleListResponse
+
+	assert.NoError(t, h.GetExamples(c))
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
+	assert.Equal(t, handlers.ExampleListResponse{
+		Data:     []handlers.ExampleRecord{},
+		Page:     2,
+		PageSize: 10,
+		Total:    0,
 	}, jsonRes)
 }
 

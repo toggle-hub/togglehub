@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	apiutils "github.com/Roll-Play/togglelabs/pkg/api_utils"
 	"github.com/Roll-Play/togglelabs/pkg/config"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
