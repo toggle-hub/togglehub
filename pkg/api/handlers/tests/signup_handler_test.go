@@ -73,7 +73,11 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 	assert.NoError(t, h.PostUser(c))
 
 	var ur handlers.UserRecord
-	assert.NoError(t, collection.FindOne(context.Background(), bson.D{{Key: "email", Value: "fizi@gmail.com"}}).Decode(&ur))
+	assert.NoError(t, collection.FindOne(context.Background(),
+		bson.D{{
+			Key:   "email",
+			Value: "fizi@gmail.com",
+		}}).Decode(&ur))
 
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
@@ -116,7 +120,11 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 	assert.NoError(t, h.PostUser(c))
 
 	var ur handlers.UserRecord
-	assert.NoError(t, collection.FindOne(context.Background(), bson.D{{Key: "email", Value: "fizi@gmail.com"}}).Decode(&ur))
+	assert.NoError(t, collection.FindOne(context.Background(),
+		bson.D{{
+			Key:   "email",
+			Value: "fizi@gmail.com",
+		}}).Decode(&ur))
 
 	assert.Equal(t, http.StatusConflict, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
