@@ -22,7 +22,6 @@ func (suite *HandlersSuite) SetupTest() {
 }
 
 func (suite *HandlersSuite) TestHealthHanlderHealthy() {
-
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
@@ -31,7 +30,7 @@ func (suite *HandlersSuite) TestHealthHanlderHealthy() {
 	var jsonRes handlers.HealthResponse
 
 	assert.NoError(suite.T(), handlers.HealthHandler(c))
-	json.Unmarshal(rec.Body.Bytes(), &jsonRes)
+	assert.NoError(suite.T(), json.Unmarshal(rec.Body.Bytes(), &jsonRes))
 	assert.Equal(suite.T(), http.StatusOK, rec.Code)
 	assert.Equal(suite.T(), handlers.HealthResponse{
 		Alive: true,
