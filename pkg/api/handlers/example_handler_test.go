@@ -76,7 +76,6 @@ func (suite *ExampleTestSuite) TestExample() {
 		PageSize: 10,
 		Total:    1,
 	}, jsonRes)
-
 }
 
 func TestExampleTestSuite(t *testing.T) {
