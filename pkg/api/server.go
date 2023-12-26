@@ -20,9 +20,9 @@ func (s *Server) get(path string, handler echo.HandlerFunc, middlewares ...echo.
 	s.app.GET(path, handler, middlewares...)
 }
 
-// func (s *Server) post(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
-// 	s.app.Post(path, handlers...)
-// }
+func (s *Server) post(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
+	s.app.POST(path, handler, middlewares...)
+}
 
 // func (s *Server) put(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
 // 	s.app.Put(path, handlers...)
@@ -58,4 +58,6 @@ func registerRoutes(server *Server) {
 
 	exampleHandler := handlers.NewExampleRouter(server.db)
 	server.get("/example", exampleHandler.GetExamples)
+	signUpHandler := handlers.NewSignUpHandler(server.db)
+	server.post("/signup", signUpHandler.PostUser)
 }
