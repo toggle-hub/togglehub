@@ -102,12 +102,8 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 
 	assert.NoError(t, err)
 
-	requestBody := []byte(`{
-		"email": "fizi@gmail.com",
-		"password": "123123",
-		"first_name": "fizi",
-		"last_name": "valores"
-	}`)
+	requestBody, err := json.Marshal(r)
+	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodPost, "/signup", bytes.NewBuffer(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
