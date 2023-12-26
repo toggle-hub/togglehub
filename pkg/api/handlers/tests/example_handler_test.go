@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	"github.com/Roll-Play/togglelabs/pkg/config"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -22,13 +23,11 @@ type ExampleTestSuite struct {
 }
 
 func (suite *ExampleTestSuite) SetupTest() {
-	testCtx := context.Background()
-
-	client, err := mongo.Connect(testCtx, options.Client().ApplyURI("mongodb://test:test@localhost:27017"))
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI("mongodb://test:test@localhost:27017"))
 	if err != nil {
 		panic(err)
 	}
-	suite.db = client.Database("togglelabs_test")
+	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
 }
 
@@ -47,7 +46,7 @@ func (suite *ExampleTestSuite) TearDownSuite() {
 
 func (suite *ExampleTestSuite) TestExampleHandlerReturnsList() {
 	t := suite.T()
-	collection := suite.db.Collection("example")
+	collection := suite.db.Collection(handlers.ExampleCollectionName)
 	r := handlers.ExampleRecord{
 		Name: "fizi",
 	}
@@ -81,7 +80,7 @@ func (suite *ExampleTestSuite) TestExampleHandlerReturnsList() {
 func (suite *ExampleTestSuite) TestExampleHandlerReturnsEmptyList() {
 	t := suite.T()
 
-	collection := suite.db.Collection("example")
+	collection := suite.db.Collection(handlers.ExampleCollectionName)
 	r := handlers.ExampleRecord{
 		Name: "fizi",
 	}

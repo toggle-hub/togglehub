@@ -2,6 +2,8 @@ package apiutils
 
 import (
 	"strconv"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func GetPaginationParams(page, limit string) (int, int) {
@@ -20,4 +22,13 @@ func GetPaginationParams(page, limit string) (int, int) {
 	limitNumber, _ := strconv.Atoi(limit)
 
 	return pageNumber, limitNumber
+}
+
+func EncryptPassword(password string) (string, error) {
+	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 8)
+	if err != nil {
+		return "", err
+	}
+
+	return string(encryptedPassword), nil
 }

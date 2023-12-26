@@ -14,7 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const collection = "example"
+const ExampleCollectionName = "example"
 
 type ExampleHandler struct {
 	db *mongo.Database
@@ -44,7 +44,7 @@ func (eh *ExampleHandler) GetExamples(c echo.Context) error {
 
 	page, limit := apiutils.GetPaginationParams(pageQuery, limitQuery)
 
-	collection := eh.db.Collection(collection)
+	collection := eh.db.Collection(ExampleCollectionName)
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.DBFetchTimeout*time.Second)
 	defer cancel()
