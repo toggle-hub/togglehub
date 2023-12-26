@@ -69,7 +69,7 @@ jobs:
         image: mongo
         env:
           MONGO_INITDB_ROOT_USERNAME: test
-          MONGO_INITDB_ROOT_PASSWORD: togglelabs
+          MONGO_INITDB_ROOT_PASSWORD: test
           MONGO_INITDB_DATABASE: togglelabs_test
         options: >-
           --health-cmd mongo

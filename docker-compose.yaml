@@ -20,6 +20,9 @@ services:
       - "27017:27017"
     expose:
       - 27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: test
+      MONGO_INITDB_ROOT_PASSWORD: test
     networks:
       - togglelabs
 networks:

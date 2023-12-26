@@ -24,7 +24,7 @@ type ExampleTestSuite struct {
 func (suite *ExampleTestSuite) SetupTest() {
 	testCtx := context.Background()
 
-	client, err := mongo.Connect(testCtx, options.Client().ApplyURI("mongodb://localhost:27017"))
+	client, err := mongo.Connect(testCtx, options.Client().ApplyURI("mongodb://test:test@localhost:27017"))
 	if err != nil {
 		panic(err)
 	}
