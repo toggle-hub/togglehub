@@ -14,20 +14,22 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const collection = "example"
+
 type ExampleHandler struct {
 	db *mongo.Database
 }
 
-type ExampleResponse struct {
+type ExampleRecord struct {
 	ID   primitive.ObjectID `json:"_id" bson:"_id"`
 	Name string             `json:"name" bson:"name"`
 }
 
 type ExampleListResponse struct {
-	Data     []ExampleResponse `json:"data"`
-	Page     int               `json:"page"`
-	PageSize int               `json:"page_size"`
-	Total    int               `json:"total"`
+	Data     []ExampleRecord `json:"data"`
+	Page     int             `json:"page"`
+	PageSize int             `json:"page_size"`
+	Total    int             `json:"total"`
 }
 
 func NewExampleRouter(db *mongo.Database) *ExampleHandler {
@@ -42,7 +44,7 @@ func (eh *ExampleHandler) GetExamples(c echo.Context) error {
 
 	page, limit := apiutils.GetPaginationParams(pageQuery, limitQuery)
 
-	collection := eh.db.Collection("example")
+	collection := eh.db.Collection(collection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.DBFetchTimeout*time.Second)
 	defer cancel()
@@ -60,7 +62,7 @@ func (eh *ExampleHandler) GetExamples(c echo.Context) error {
 
 	defer cursor.Close(context.Background())
 
-	records := []ExampleResponse{}
+	records := []ExampleRecord{}
 
 	if cursor.Next(context.Background()) {
 		if err = cursor.All(context.Background(), &records); err != nil {
