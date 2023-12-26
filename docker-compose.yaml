@@ -13,6 +13,18 @@ services:
     #   - mongodb_data:/data/db
     networks:
       - togglelabs
+  togglelabs_test_db:
+    image: mongo:latest
+    container_name: togglelabs-test-db
+    ports:
+      - "27017:27017"
+    expose:
+      - 27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: test
+      MONGO_INITDB_ROOT_PASSWORD: test
+    networks:
+      - togglelabs
 networks:
   togglelabs:
     driver: bridge
