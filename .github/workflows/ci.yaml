@@ -71,11 +71,11 @@ jobs:
           MONGO_INITDB_ROOT_USERNAME: test
           MONGO_INITDB_ROOT_PASSWORD: test
           MONGO_INITDB_DATABASE: togglelabs_test
-        options: >-
-          --health-cmd mongo
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+        # options: >-
+        #   --health-cmd mongo
+        #   --health-interval 10s
+        #   --health-timeout 5s
+        #   --health-retries 5
         ports:
           - "27017:27017"
 

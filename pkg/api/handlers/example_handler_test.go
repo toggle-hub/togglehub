@@ -33,11 +33,15 @@ func (suite *ExampleTestSuite) SetupTest() {
 }
 
 func (suite *ExampleTestSuite) AfterTest(_, _ string) {
-	suite.db.Drop(context.Background())
+	if err := suite.db.Drop(context.Background()); err != nil {
+		panic(err)
+	}
 }
 
 func (suite *ExampleTestSuite) TearDownSuite() {
-	suite.db.Client().Disconnect(context.Background())
+	if err := suite.db.Client().Disconnect(context.Background()); err != nil {
+		panic(err)
+	}
 	suite.server.Close()
 }
 
@@ -63,7 +67,7 @@ func (suite *ExampleTestSuite) TestExample() {
 	assert.NoError(t, h.GetExamples(c))
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	json.Unmarshal(rec.Body.Bytes(), &jsonRes)
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
 	assert.Equal(t, handlers.ExampleListResponse{
 		Data: []handlers.ExampleRecord{
 			r,
