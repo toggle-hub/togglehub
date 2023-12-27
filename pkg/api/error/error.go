@@ -1,4 +1,4 @@
-package apierror
+package apierrors
 
 import (
 	"net/http"
@@ -12,7 +12,7 @@ const (
 	NotFoundError       ErrorMessage = "record not found"
 	InternalServerError ErrorMessage = "internal server error"
 	EmailConflictError  ErrorMessage = "email already in use"
-	// PermissionError  ErrorMessage   = "The user %s doesn't have the necessary permissions"
+	UnauthorizedError   ErrorMessage = "user lacks valid authentication credentials"
 )
 
 type Error struct {
@@ -20,10 +20,10 @@ type Error struct {
 	Message ErrorMessage `json:"message"`
 }
 
-func CustomError(context echo.Context, https int, message ErrorMessage) error {
+func CustomError(c echo.Context, httpStatus int, message ErrorMessage) error {
 	newError := Error{
-		Error:   http.StatusText(https),
+		Error:   http.StatusText(httpStatus),
 		Message: message,
 	}
-	return context.JSON(https, newError)
+	return c.JSON(httpStatus, newError)
 }
