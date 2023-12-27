@@ -8,9 +8,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Roll-Play/togglelabs/pkg/api/common"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/config"
-	apierror "github.com/Roll-Play/togglelabs/pkg/error"
+	"github.com/Roll-Play/togglelabs/pkg/models"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -53,7 +55,7 @@ func (suite *SignUpHandlerTestSuite) TearDownSuite() {
 func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 	t := suite.T()
 
-	collection := suite.db.Collection(handlers.UserCollectionName)
+	collection := suite.db.Collection(models.UserCollectionName)
 
 	requestBody := []byte(`{
 		"email": "fizi@gmail.com",
@@ -68,11 +70,11 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 
 	h := handlers.NewSignUpHandler(suite.db)
 	c := suite.Server.NewContext(req, rec)
-	var jsonRes handlers.SignUpResponse
+	var jsonRes common.AuthResponse
 
 	assert.NoError(t, h.PostUser(c))
 
-	var ur handlers.UserRecord
+	var ur models.UserRecord
 	assert.NoError(t, collection.FindOne(context.Background(),
 		bson.D{{
 			Key:   "email",
@@ -90,9 +92,9 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 	t := suite.T()
 
-	collection := suite.db.Collection(handlers.UserCollectionName)
+	collection := suite.db.Collection(models.UserCollectionName)
 
-	r := handlers.UserRecord{
+	r := models.UserRecord{
 		Email:     "fizi@gmail.com",
 		Password:  "123123",
 		FirstName: "fizi",
@@ -111,11 +113,11 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 
 	h := handlers.NewSignUpHandler(suite.db)
 	c := suite.Server.NewContext(req, rec)
-	var jsonRes apierror.Error
+	var jsonRes apierrors.Error
 
 	assert.NoError(t, h.PostUser(c))
 
-	var ur handlers.UserRecord
+	var ur models.UserRecord
 	assert.NoError(t, collection.FindOne(context.Background(),
 		bson.D{{
 			Key:   "email",
@@ -124,6 +126,10 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 
 	assert.Equal(t, http.StatusConflict, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
+	assert.Equal(t, jsonRes, apierrors.Error{
+		Error:   http.StatusText(http.StatusConflict),
+		Message: apierrors.EmailConflictError,
+	})
 }
 
 func TestSignUpHandlerTestSuite(t *testing.T) {
