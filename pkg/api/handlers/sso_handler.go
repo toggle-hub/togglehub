@@ -6,13 +6,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/Roll-Play/togglelabs/pkg/api/common"
+	apierror "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/config"
+	"github.com/Roll-Play/togglelabs/pkg/models"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -21,13 +27,16 @@ import (
 const USER_COLLECTION = "user"
 
 type SsoHandler struct {
-	ssogolang *oauth2.Config
-	db        *mongo.Database
+	ssogolang         *oauth2.Config
+	db                *mongo.Database
+	httpClient        apiutils.HTTPClient
+	customOAuthClient apiutils.OAuthClient
 }
 
 type UserInfo struct {
-	SsoId string `json:"id" bson:"sso_id"`
-	Email string `json:"email" bson:"id"`
+	ID    primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	SsoId string             `json:"sso_id" bson:"sso_id"`
+	Email string             `json:"email" bson:"email"`
 }
 
 var RandomString = "random-string"
@@ -41,7 +50,18 @@ func NewSsoHandler(ssogolang *oauth2.Config, db *mongo.Database) *SsoHandler {
 			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "openid"},
 			Endpoint:     google.Endpoint,
 		},
-		db: db,
+		db:                db,
+		httpClient:        &apiutils.RealHttpClient{},
+		customOAuthClient: apiutils.NewRealOAuthClient(ssogolang),
+	}
+}
+
+func NewSsoHandlerForTest(db *mongo.Database, httpClient apiutils.HTTPClient, oauthClient apiutils.OAuthClient) *SsoHandler {
+	return &SsoHandler{
+		ssogolang:         &oauth2.Config{},
+		db:                db,
+		httpClient:        httpClient,
+		customOAuthClient: oauthClient,
 	}
 }
 
@@ -54,36 +74,59 @@ func (sh *SsoHandler) Signin(c echo.Context) error {
 func (sh *SsoHandler) Callback(c echo.Context) error {
 	state := c.QueryParam("state")
 	code := c.QueryParam("code")
-	httpClient := &apiutils.RealHttpClient{}
-	customOAuthClient := apiutils.NewRealOAuthClient(sh.ssogolang)
-
-	userDataBytes, err := GetUserData(state, code, customOAuthClient, httpClient)
+	log.Print(state, code)
+	userDataBytes, err := GetUserData(state, code, sh.customOAuthClient, sh.httpClient)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": err.Error(),
-		})
+		return apierror.CustomError(c, http.StatusInternalServerError, apierror.InternalServerError)
 	}
-
 	var userData = new(UserInfo)
 	err = json.Unmarshal(userDataBytes, userData)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": err.Error(),
-		})
+		return apierror.CustomError(c, http.StatusInternalServerError, apierror.InternalServerError)
 	}
-
 	collection := sh.db.Collection(USER_COLLECTION)
 	ctx, cancel := context.WithTimeout(context.Background(), config.DBFetchTimeout*time.Second)
 	defer cancel()
 
-	_, err = collection.InsertOne(ctx, userData)
+	var foundRecord models.UserRecord
+	err = collection.FindOne(context.Background(), bson.D{{Key: "email", Value: userData.Email}}).Decode(&foundRecord)
+	if err == nil {
+		token, err := apiutils.CreateJWT(foundRecord.ID, config.JWTExpireTime)
+		if err != nil {
+			return apierror.CustomError(c, http.StatusInternalServerError, apierror.InternalServerError)
+		}
+		return c.JSON(http.StatusOK, common.AuthResponse{
+			ID:        foundRecord.ID,
+			Email:     foundRecord.Email,
+			FirstName: foundRecord.FirstName,
+			LastName:  foundRecord.LastName,
+			Token:     token,
+		})
+	}
+
+	result, err := collection.InsertOne(ctx, userData)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
 		})
 	}
 
-	return c.JSON(http.StatusOK, userData)
+	objectID := result.InsertedID
+	oID, ok := objectID.(primitive.ObjectID)
+	if !ok {
+		return apierror.CustomError(c, http.StatusInternalServerError, apierror.InternalServerError)
+	}
+
+	token, err := apiutils.CreateJWT(oID, config.JWTExpireTime)
+	if err != nil {
+		return apierror.CustomError(c, http.StatusInternalServerError, apierror.InternalServerError)
+	}
+
+	return c.JSON(http.StatusCreated, common.AuthResponse{
+		ID:    userData.ID,
+		Email: userData.Email,
+		Token: token,
+	})
 }
 
 func GetUserData(state, code string, ssogolang apiutils.OAuthClient, httpClient apiutils.HTTPClient) ([]byte, error) {
