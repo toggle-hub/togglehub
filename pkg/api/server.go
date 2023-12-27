@@ -4,6 +4,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/oauth2"
 )
 
 type Server struct {
@@ -60,4 +61,8 @@ func registerRoutes(server *Server) {
 	server.get("/example", exampleHandler.GetExamples)
 	signUpHandler := handlers.NewSignUpHandler(server.db)
 	server.post("/signup", signUpHandler.PostUser)
+
+	ssoHandler := handlers.NewSsoHandler(&oauth2.Config{}, server.db)
+	server.get("/signin", ssoHandler.Signin)
+	server.get("/callback", ssoHandler.Callback)
 }
