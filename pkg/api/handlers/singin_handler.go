@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
@@ -42,7 +43,7 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 	}).Decode(&ur)
 
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			return apierrors.CustomError(c,
 				http.StatusNotFound,
 				apierrors.NotFoundError,
