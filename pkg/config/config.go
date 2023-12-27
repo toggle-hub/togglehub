@@ -1,7 +1,9 @@
 package config
 
-const DBConnectionTimeout = 10
-const DBFetchTimeout = 5
-const JWTExpireTime = 60 * 60 * 1000 * 24
-const TestDBName = "togglelabs_test"
-const BCryptCost = 8
+const (
+	DBConnectionTimeout = 10
+	DBFetchTimeout      = 5
+	JWTExpireTime       = 60 * 60 * 1000 * 24
+	BCryptCost          = 8
+	TestDBName          = "togglelabs_test"
+)
