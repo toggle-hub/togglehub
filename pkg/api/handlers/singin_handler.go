@@ -11,7 +11,6 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -35,12 +34,9 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 		)
 	}
 
-	collection := sh.db.Collection(models.UserCollectionName)
+	model := models.NewUserModel(sh.db.Collection(models.UserCollectionName))
 
-	var ur models.UserRecord
-	err := collection.FindOne(context.Background(), bson.D{
-		{Key: "email", Value: req.Email},
-	}).Decode(&ur)
+	ur, err := model.FindByEmail(context.Background(), req.Email)
 
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {

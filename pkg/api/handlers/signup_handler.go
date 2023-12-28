@@ -10,8 +10,6 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -40,9 +38,8 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		})
 	}
 
-	var foundRecord models.UserRecord
-	collection := sh.db.Collection(models.UserCollectionName)
-	err := collection.FindOne(context.Background(), bson.D{{Key: "email", Value: req.Email}}).Decode(&foundRecord)
+	model := models.NewUserModel(sh.db.Collection(models.UserCollectionName))
+	_, err := model.FindByEmail(context.Background(), req.Email)
 	if err == nil {
 		return apierrors.CustomError(c,
 			http.StatusConflict,
@@ -58,7 +55,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		)
 	}
 
-	result, err := collection.InsertOne(context.Background(), ur)
+	objectID, err := model.InsertOne(context.Background(), ur)
 	if err != nil {
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
@@ -66,16 +63,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		)
 	}
 
-	objectID := result.InsertedID
-	oID, ok := objectID.(primitive.ObjectID)
-	if !ok {
-		return apierrors.CustomError(c,
-			http.StatusInternalServerError,
-			apierrors.InternalServerError,
-		)
-	}
-
-	token, err := apiutils.CreateJWT(oID, config.JWTExpireTime)
+	token, err := apiutils.CreateJWT(objectID, config.JWTExpireTime)
 	if err != nil {
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
@@ -84,7 +72,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, common.AuthResponse{
-		ID:        oID,
+		ID:        objectID,
 		Email:     ur.Email,
 		FirstName: ur.FirstName,
 		LastName:  ur.LastName,
