@@ -12,7 +12,7 @@ const (
 	NotFoundError       ErrorMessage = "record not found"
 	InternalServerError ErrorMessage = "internal server error"
 	EmailConflictError  ErrorMessage = "email already in use"
-	// PermissionError  ErrorMessage   = "The user %s doesn't have the necessary permissions"
+	UnauthorizedError   ErrorMessage = "user does not have authorized credentials"
 )
 
 type Error struct {
