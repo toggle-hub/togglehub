@@ -137,7 +137,6 @@ func GetUserData(
 	ssogolang apiutils.OAuthClient,
 	httpClient apiutils.BaseHTTPClient,
 ) ([]byte, error) {
-
 	if state != RandomString {
 		return nil, errors.New("invalid user state")
 	}
@@ -154,6 +153,5 @@ func GetUserData(
 
 	defer response.Body.Close()
 	data, err := io.ReadAll(response.Body)
-
 	return data, nil
 }
