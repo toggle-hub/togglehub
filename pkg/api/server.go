@@ -56,8 +56,10 @@ func NewServer(port string, db *mongo.Database) *Server {
 func registerRoutes(server *Server) {
 	server.get("/healthz", handlers.HealthHandler)
 
-	exampleHandler := handlers.NewExampleRouter(server.db)
-	server.get("/example", exampleHandler.GetExamples)
+	// exampleHandler := handlers.NewExampleRouter(server.db)
+	// server.get("/example", exampleHandler.GetExamples)
 	signUpHandler := handlers.NewSignUpHandler(server.db)
 	server.post("/signup", signUpHandler.PostUser)
+	signInHandler := handlers.NewSignInHandler(server.db)
+	server.post("/signin", signInHandler.PostSignIn)
 }

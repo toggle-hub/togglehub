@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/config"
-	apierror "github.com/Roll-Play/togglelabs/pkg/error"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
@@ -28,41 +28,40 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 	req := new(SignInRequest)
 
 	if err := c.Bind(req); err != nil {
-		return apierror.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
-			apierror.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
-	collection := sh.db.Collection(models.UserCollectionName)
-	model := models.NewUserModel(collection)
+	model := models.NewUserModel(sh.db.Collection(models.UserCollectionName))
 
 	ur, err := model.FindByEmail(context.Background(), req.Email)
 
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return apierror.CustomError(c,
+			return apierrors.CustomError(c,
 				http.StatusNotFound,
-				apierror.NotFoundError,
+				apierrors.NotFoundError,
 			)
 		}
 
-		return apierror.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierror.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(ur.Password), []byte(req.Password)); err != nil {
-		return apierror.CustomError(c, http.StatusUnauthorized, apierror.UnauthorizedError)
+		return apierrors.CustomError(c, http.StatusUnauthorized, apierrors.UnauthorizedError)
 	}
 
 	token, err := apiutils.CreateJWT(ur.ID, config.JWTExpireTime)
 	if err != nil {
-		return apierror.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
-			apierror.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 

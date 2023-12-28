@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/config"
-	apierror "github.com/Roll-Play/togglelabs/pkg/error"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
@@ -111,7 +111,7 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 
 	h := handlers.NewSignUpHandler(suite.db)
 	c := suite.Server.NewContext(req, rec)
-	var jsonRes apierror.Error
+	var jsonRes apierrors.Error
 
 	assert.NoError(t, h.PostUser(c))
 
@@ -120,6 +120,10 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 
 	assert.Equal(t, http.StatusConflict, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
+	assert.Equal(t, jsonRes, apierrors.Error{
+		Error:   http.StatusText(http.StatusConflict),
+		Message: apierrors.EmailConflictError,
+	})
 }
 
 func TestSignUpHandlerTestSuite(t *testing.T) {
