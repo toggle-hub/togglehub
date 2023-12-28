@@ -17,7 +17,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
@@ -55,7 +54,7 @@ func (suite *SignUpHandlerTestSuite) TearDownSuite() {
 func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 	t := suite.T()
 
-	collection := suite.db.Collection(models.UserCollectionName)
+	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
 
 	requestBody := []byte(`{
 		"email": "fizi@gmail.com",
@@ -74,12 +73,8 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 
 	assert.NoError(t, h.PostUser(c))
 
-	var ur models.UserRecord
-	assert.NoError(t, collection.FindOne(context.Background(),
-		bson.D{{
-			Key:   "email",
-			Value: "fizi@gmail.com",
-		}}).Decode(&ur))
+	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
+	assert.NoError(t, err)
 
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
@@ -92,15 +87,18 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 	t := suite.T()
 
-	collection := suite.db.Collection(models.UserCollectionName)
+	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
 
-	r := models.UserRecord{
-		Email:     "fizi@gmail.com",
-		Password:  "123123",
-		FirstName: "fizi",
-		LastName:  "valores",
-	}
-	_, err := collection.InsertOne(context.Background(), r)
+	r, err := models.NewUserRecord(
+		"fizi@gmail.com",
+		"123123",
+		"fizi",
+		"valores",
+	)
+
+	assert.NoError(t, err)
+
+	_, err = model.InsertOne(context.Background(), r)
 
 	assert.NoError(t, err)
 
@@ -117,12 +115,8 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 
 	assert.NoError(t, h.PostUser(c))
 
-	var ur models.UserRecord
-	assert.NoError(t, collection.FindOne(context.Background(),
-		bson.D{{
-			Key:   "email",
-			Value: "fizi@gmail.com",
-		}}).Decode(&ur))
+	_, err = model.FindByEmail(context.Background(), "fizi@gmail.com")
+	assert.NoError(t, err)
 
 	assert.Equal(t, http.StatusConflict, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))

@@ -13,12 +13,10 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -55,18 +53,17 @@ func (suite *SignInHandlerTestSuite) TearDownSuite() {
 func (suite *SignInHandlerTestSuite) TestSignInHandlerSuccess() {
 	t := suite.T()
 
-	collection := suite.db.Collection(models.UserCollectionName)
+	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
 
-	p, err := apiutils.EncryptPassword("123123")
+	r, err := models.NewUserRecord(
+		"fizi@gmail.com",
+		"123123",
+		"fizi",
+		"valores",
+	)
 	assert.NoError(t, err)
 
-	r := models.UserRecord{
-		Email:     "fizi@gmail.com",
-		Password:  p,
-		FirstName: "fizi",
-		LastName:  "valores",
-	}
-	_, err = collection.InsertOne(context.Background(), r)
+	_, err = model.InsertOne(context.Background(), r)
 
 	assert.NoError(t, err)
 
@@ -85,12 +82,8 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerSuccess() {
 
 	assert.NoError(t, h.PostSignIn(c))
 
-	var ur models.UserRecord
-	assert.NoError(t, collection.FindOne(context.Background(),
-		bson.D{{
-			Key:   "email",
-			Value: "fizi@gmail.com",
-		}}).Decode(&ur))
+	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
+	assert.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
@@ -129,18 +122,17 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerNotFound() {
 func (suite *SignInHandlerTestSuite) TestSignInHandlerUnauthorized() {
 	t := suite.T()
 
-	collection := suite.db.Collection(models.UserCollectionName)
+	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
 
-	p, err := apiutils.EncryptPassword("123123")
+	r, err := models.NewUserRecord(
+		"fizi@gmail.com",
+		"123123",
+		"fizi",
+		"valores",
+	)
 	assert.NoError(t, err)
 
-	r := models.UserRecord{
-		Email:     "fizi@gmail.com",
-		Password:  p,
-		FirstName: "fizi",
-		LastName:  "valores",
-	}
-	_, err = collection.InsertOne(context.Background(), r)
+	_, err = model.InsertOne(context.Background(), r)
 
 	assert.NoError(t, err)
 
