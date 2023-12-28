@@ -2,35 +2,35 @@ package api
 
 import (
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	"github.com/Roll-Play/togglelabs/pkg/storage"
 	"github.com/labstack/echo/v4"
-	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/oauth2"
 )
 
-type Server struct {
-	app  *echo.Echo
-	port string
-	db   *mongo.Database
+type App struct {
+	server  *echo.Echo
+	port    string
+	storage *storage.MongoStorage
 }
 
-func (s *Server) Listen() error {
-	return s.app.Start(s.port)
+func (a *App) Listen() error {
+	return a.server.Start(a.port)
 }
 
-func (s *Server) get(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
-	s.app.GET(path, handler, middlewares...)
+func (a *App) get(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
+	a.server.GET(path, handler, middlewares...)
 }
 
-func (s *Server) post(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
-	s.app.POST(path, handler, middlewares...)
+func (a *App) post(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
+	a.server.POST(path, handler, middlewares...)
 }
 
-// func (s *Server) put(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
-// 	s.app.Put(path, handlers...)
+// func (a *App) put(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
+// 	a.server.Put(path, handlers...)
 // }
 
-// func (s *Server) patch(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
-// 	s.app.Patch(path, handlers...)
+// func (a *App) patch(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
+// 	a.server.Patch(path, handlers...)
 // }
 
 func normalizePort(port string) string {
@@ -41,31 +41,29 @@ func normalizePort(port string) string {
 	return port
 }
 
-func NewServer(port string, db *mongo.Database) *Server {
-	app := echo.New()
+func NewApp(port string, storage *storage.MongoStorage) *App {
+	server := echo.New()
 
-	server := &Server{
-		app:  app,
-		port: normalizePort(port),
-		db:   db,
+	App := &App{
+		server:  server,
+		port:    normalizePort(port),
+		storage: storage,
 	}
 
-	registerRoutes(server)
-	return server
+	registerRoutes(App)
+	return App
 }
 
-func registerRoutes(server *Server) {
-	server.get("/healthz", handlers.HealthHandler)
+func registerRoutes(app *App) {
+	app.get("/healthz", handlers.HealthHandler)
 
-	// exampleHandler := handlers.NewExampleRouter(server.db)
-	// server.get("/example", exampleHandler.GetExamples)
-	signUpHandler := handlers.NewSignUpHandler(server.db)
-	server.post("/signup", signUpHandler.PostUser)
+	ssoHandler := handlers.NewSsoHandler(&oauth2.Config{}, app.storage.DB())
+	app.post("/oauth", ssoHandler.Signin)
+	app.get("/callback", ssoHandler.Callback)
 
-	ssoHandler := handlers.NewSsoHandler(&oauth2.Config{}, server.db)
-	server.post("/oauth", ssoHandler.Signin)
-	server.get("/callback", ssoHandler.Callback)
+	signUpHandler := handlers.NewSignUpHandler(app.storage.DB())
+	app.post("/signup", signUpHandler.PostUser)
 
-	signInHandler := handlers.NewSignInHandler(server.db)
-	server.post("/signin", signInHandler.PostSignIn)
+	signInHandler := handlers.NewSignInHandler(app.storage.DB())
+	app.post("/signin", signInHandler.PostSignIn)
 }
