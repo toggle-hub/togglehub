@@ -24,18 +24,16 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-const USER_COLLECTION = "user"
-
 type SsoHandler struct {
 	ssogolang         *oauth2.Config
 	db                *mongo.Database
-	httpClient        apiutils.HTTPClient
+	httpClient        apiutils.BaseHTTPClient
 	customOAuthClient apiutils.OAuthClient
 }
 
 type UserInfo struct {
 	ID    primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
-	SsoId string             `json:"sso_id" bson:"sso_id"`
+	SsoID string             `json:"sso_id" bson:"sso_id"`
 	Email string             `json:"email" bson:"email"`
 }
 
@@ -51,12 +49,16 @@ func NewSsoHandler(ssogolang *oauth2.Config, db *mongo.Database) *SsoHandler {
 			Endpoint:     google.Endpoint,
 		},
 		db:                db,
-		httpClient:        &apiutils.RealHttpClient{},
+		httpClient:        &apiutils.HTTPClient{},
 		customOAuthClient: apiutils.NewRealOAuthClient(ssogolang),
 	}
 }
 
-func NewSsoHandlerForTest(db *mongo.Database, httpClient apiutils.HTTPClient, oauthClient apiutils.OAuthClient) *SsoHandler {
+func NewSsoHandlerForTest(
+	db *mongo.Database,
+	httpClient apiutils.BaseHTTPClient,
+	oauthClient apiutils.OAuthClient,
+) *SsoHandler {
 	return &SsoHandler{
 		ssogolang:         &oauth2.Config{},
 		db:                db,
@@ -84,7 +86,7 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	if err != nil {
 		return apierror.CustomError(c, http.StatusInternalServerError, apierror.InternalServerError)
 	}
-	collection := sh.db.Collection(USER_COLLECTION)
+	collection := sh.db.Collection(models.UserCollectionName)
 	ctx, cancel := context.WithTimeout(context.Background(), config.DBFetchTimeout*time.Second)
 	defer cancel()
 
@@ -129,7 +131,12 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	})
 }
 
-func GetUserData(state, code string, ssogolang apiutils.OAuthClient, httpClient apiutils.HTTPClient) ([]byte, error) {
+func GetUserData(
+	state string,
+	code string,
+	ssogolang apiutils.OAuthClient,
+	httpClient apiutils.BaseHTTPClient,
+) ([]byte, error) {
 
 	if state != RandomString {
 		return nil, errors.New("invalid user state")

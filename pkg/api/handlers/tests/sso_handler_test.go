@@ -31,10 +31,10 @@ type SsoTestSuite struct {
 
 type MockHTTPClient struct{}
 
-func (c *MockHTTPClient) Get(url string) (*http.Response, error) {
+func (c *MockHTTPClient) Get(_ string) (*http.Response, error) {
 	response := httptest.NewRecorder()
 	userInfo := handlers.UserInfo{
-		SsoId: "12345",
+		SsoID: "12345",
 		Email: "test@test.com",
 	}
 	body, err := json.Marshal(userInfo)
@@ -69,11 +69,15 @@ func (suite *SsoTestSuite) SetupTest() {
 }
 
 func (suite *SsoTestSuite) AfterTest(_, _ string) {
-	suite.db.Drop(context.Background())
+	if err := suite.db.Drop(context.Background()); err != nil {
+		panic(err)
+	}
 }
 
 func (suite *SsoTestSuite) TearDownSuite() {
-	suite.db.Client().Disconnect(context.Background())
+	if err := suite.db.Client().Disconnect(context.Background()); err != nil {
+		panic(err)
+	}
 	suite.server.Close()
 }
 

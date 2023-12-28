@@ -10,14 +10,14 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type HTTPClient interface {
+type BaseHTTPClient interface {
 	Get(url string) (*http.Response, error)
 }
 
-type RealHttpClient struct{}
+type HTTPClient struct{}
 
-func (c *RealHttpClient) Get(url string) (*http.Response, error) {
-	return http.Get(url)
+func (c *HTTPClient) Get(url string) (*http.Response, error) {
+	return http.Get(url) //nolint
 }
 
 type OAuthClient interface {
