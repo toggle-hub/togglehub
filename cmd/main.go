@@ -1,16 +1,12 @@
 package main
 
 import (
-	"context"
 	"log"
 	"os"
-	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api"
-	"github.com/Roll-Play/togglelabs/pkg/config"
+	"github.com/Roll-Play/togglelabs/pkg/storage"
 	"github.com/joho/godotenv"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
@@ -18,16 +14,16 @@ func main() {
 		log.Panic(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), config.DBConnectionTimeout*time.Second)
-	defer cancel()
-
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("DATABASE_URL")))
+	storage, err := storage.GetInstance()
 	if err != nil {
 		log.Panic(err)
 	}
 
-	db := client.Database(os.Getenv("DATABASE"))
-	app := api.NewServer(os.Getenv("PORT"), db)
+	if err := storage.Init(); err != nil {
+		log.Panic(err)
+	}
+
+	app := api.NewApp(os.Getenv("PORT"), storage)
 
 	log.Panic(app.Listen())
 }
