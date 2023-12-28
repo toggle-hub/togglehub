@@ -153,5 +153,9 @@ func GetUserData(
 
 	defer response.Body.Close()
 	data, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
 	return data, nil
 }
