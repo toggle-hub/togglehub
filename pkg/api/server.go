@@ -4,6 +4,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/storage"
 	"github.com/labstack/echo/v4"
+	"golang.org/x/oauth2"
 )
 
 type App struct {
@@ -55,6 +56,10 @@ func NewApp(port string, storage *storage.MongoStorage) *App {
 
 func registerRoutes(app *App) {
 	app.get("/healthz", handlers.HealthHandler)
+
+	ssoHandler := handlers.NewSsoHandler(&oauth2.Config{}, app.storage.DB())
+	app.post("/oauth", ssoHandler.Signin)
+	app.get("/callback", ssoHandler.Callback)
 
 	signUpHandler := handlers.NewSignUpHandler(app.storage.DB())
 	app.post("/signup", signUpHandler.PostUser)
