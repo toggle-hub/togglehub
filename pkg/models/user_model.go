@@ -75,7 +75,6 @@ func (um *UserModel) UpdateOne(
 }
 
 type UserRecord struct {
-<<<<<<< HEAD:pkg/models/user_model.go
 	ID        primitive.ObjectID `json:"_id" bson:"_id"`
 	Email     string             `json:"email" bson:"email"`
 	SsoID     string             `json:"sso_id,omitempty" bson:"sso_id,omitempty"`
@@ -83,16 +82,6 @@ type UserRecord struct {
 	FirstName string             `json:"first_name,omitempty" bson:"first_name,omitempty"`
 	LastName  string             `json:"last_name,omitempty" bson:"last_name,omitempty"`
 	storage.Timestamps
-=======
-	ID        primitive.ObjectID  `json:"_id,omitempty" bson:"_id,omitempty"`
-	Email     string              `json:"email" bson:"email"`
-	Password  string              `json:"password" bson:"password"`
-	FirstName string              `json:"first_name,omitempty" bson:"first_name,omitempty"`
-	LastName  string              `json:"last_name,omitempty" bson:"last_name,omitempty"`
-	CreatedAt primitive.Timestamp `json:"created_at,omitempty" bson:"created_at,omitempty"`
-	UpadtedAt primitive.Timestamp `json:"updated_at,omitempty" bson:"updated_at,omitempty"`
-	DeletedAt primitive.Timestamp `json:"deleted_at,omitempty" bson:"deleted_at,omitempty"`
->>>>>>> 1d564d630e53fba521f547b28edeac0b185a31b6:pkg/models/user_collection.go
 }
 
 func NewUserRecord(email, password, firstName, lastName string) (*UserRecord, error) {
