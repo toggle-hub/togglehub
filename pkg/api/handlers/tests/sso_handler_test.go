@@ -33,7 +33,7 @@ type MockHTTPClient struct{}
 
 func (c *MockHTTPClient) Get(_ string) (*http.Response, error) {
 	response := httptest.NewRecorder()
-	userInfo := handlers.UserInfo{
+	userInfo := models.UserRecord{
 		SsoID: "12345",
 		Email: "test@test.com",
 	}
@@ -123,7 +123,7 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerNewUserSuccess() {
 
 func (suite *SignUpHandlerTestSuite) TestSSoHandlerExistingUserSuccess() {
 	t := suite.T()
-	collection := suite.db.Collection(models.UserCollectionName)
+	model := models.NewUserModel(suite.db)
 	mockOAuthClient := &MockOAuthClient{
 		ExchangeFunc: func(ctc context.Context, code string) (*oauth2.Token, error) {
 			return &oauth2.Token{
@@ -134,10 +134,15 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerExistingUserSuccess() {
 		},
 	}
 
-	r := handlers.UserInfo{
-		Email: "test@test.com",
-	}
-	_, err := collection.InsertOne(context.Background(), r)
+	r, err := models.NewUserRecord(
+		"test@test.com",
+		"123123",
+		"fizi",
+		"valores",
+	)
+	assert.NoError(t, err)
+
+	_, err = model.InsertOne(context.Background(), r)
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/callback", nil)

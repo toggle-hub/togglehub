@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	"errors"
+	"log"
 	"net/http"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
@@ -33,14 +35,17 @@ type SignUpRequest struct {
 func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	req := new(SignUpRequest)
 	if err := c.Bind(req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
-		})
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(c,
+			http.StatusBadRequest,
+			apierrors.BadRequestError,
+		)
 	}
 
-	model := models.NewUserModel(sh.db.Collection(models.UserCollectionName))
+	model := models.NewUserModel(sh.db)
 	_, err := model.FindByEmail(context.Background(), req.Email)
 	if err == nil {
+		log.Println(apiutils.HandlerErrorLogMessage(errors.New(apierrors.EmailConflictError), c))
 		return apierrors.CustomError(c,
 			http.StatusConflict,
 			apierrors.EmailConflictError,
@@ -49,6 +54,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 
 	ur, err := models.NewUserRecord(req.Email, req.Password, req.FirstName, req.LastName)
 	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
@@ -57,6 +63,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 
 	objectID, err := model.InsertOne(context.Background(), ur)
 	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
@@ -65,6 +72,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 
 	token, err := apiutils.CreateJWT(objectID, config.JWTExpireTime)
 	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,

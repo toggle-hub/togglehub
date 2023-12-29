@@ -53,7 +53,7 @@ func (suite *SignInHandlerTestSuite) TearDownSuite() {
 func (suite *SignInHandlerTestSuite) TestSignInHandlerSuccess() {
 	t := suite.T()
 
-	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
+	model := models.NewUserModel(suite.db)
 
 	r, err := models.NewUserRecord(
 		"fizi@gmail.com",
@@ -122,7 +122,7 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerNotFound() {
 func (suite *SignInHandlerTestSuite) TestSignInHandlerUnauthorized() {
 	t := suite.T()
 
-	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
+	model := models.NewUserModel(suite.db)
 
 	r, err := models.NewUserRecord(
 		"fizi@gmail.com",

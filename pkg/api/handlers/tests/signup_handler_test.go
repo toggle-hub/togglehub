@@ -54,7 +54,7 @@ func (suite *SignUpHandlerTestSuite) TearDownSuite() {
 func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 	t := suite.T()
 
-	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
+	model := models.NewUserModel(suite.db)
 
 	requestBody := []byte(`{
 		"email": "fizi@gmail.com",
@@ -87,7 +87,7 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 	t := suite.T()
 
-	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
+	model := models.NewUserModel(suite.db)
 
 	r, err := models.NewUserRecord(
 		"fizi@gmail.com",

@@ -11,6 +11,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type ContextUser struct {
+	ID primitive.ObjectID
+}
+
 func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(context echo.Context) error {
 		authHeader := context.Request().Header.Get("Authorization")
@@ -41,7 +45,7 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			user, ok := claims["sub"].(primitive.ObjectID)
+			userID, ok := claims["sub"].(primitive.ObjectID)
 			if !ok {
 				return context.JSON(http.StatusUnauthorized, apierrors.Error{
 					Error:   "Invalid token",
@@ -49,7 +53,9 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 				})
 			}
 
-			context.Set("user", user)
+			context.Set("user", ContextUser{
+				ID: userID,
+			})
 			return next(context)
 		}
 
