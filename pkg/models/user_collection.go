@@ -71,7 +71,7 @@ func (um *UserModel) UpdateOne(
 		fields = append(fields, bson.E{Key: v.Key, Value: v.Value})
 	}
 	update := bson.D{{Key: "$set", Value: fields}}
-	_, err := um.collection.UpdateOne(context.Background(), filter, update)
+	_, err := um.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return primitive.ObjectID{}, err
 	}

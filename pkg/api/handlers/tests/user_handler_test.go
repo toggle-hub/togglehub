@@ -64,7 +64,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 	)
 	assert.NoError(t, err)
 
-	userId, err := model.InsertOne(context.Background(), r)
+	userID, err := model.InsertOne(context.Background(), r)
 	assert.NoError(t, err)
 
 	patchInfo := handlers.UserPatchRequest{
@@ -78,7 +78,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	c := suite.Server.NewContext(req, rec)
-	c.Set("user", userId)
+	c.Set("user", userID)
 
 	h := handlers.NewUserHandler(suite.db)
 	var jsonRes common.PatchResponse
@@ -135,7 +135,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields(
 	)
 	assert.NoError(t, err)
 
-	userId, err := model.InsertOne(context.Background(), r)
+	userID, err := model.InsertOne(context.Background(), r)
 	assert.NoError(t, err)
 
 	requestBody := []byte(
@@ -149,7 +149,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields(
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	c := suite.Server.NewContext(req, rec)
-	c.Set("user", userId)
+	c.Set("user", userID)
 
 	h := handlers.NewUserHandler(suite.db)
 	var jsonRes common.PatchResponse

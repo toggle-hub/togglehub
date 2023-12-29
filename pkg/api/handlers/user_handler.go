@@ -29,9 +29,9 @@ type UserPatchRequest struct {
 }
 
 func (sh *UserHandler) PatchUser(c echo.Context) error {
-	userId := c.Get("user").(primitive.ObjectID)
+	userID := c.Get("user").(primitive.ObjectID)
 	model := models.NewUserModel(sh.db.Collection(models.UserCollectionName))
-	ur, err := model.FindByID(context.Background(), userId)
+	ur, err := model.FindByID(context.Background(), userID)
 	if err != nil {
 		return apierrors.CustomError(c,
 			http.StatusNotFound,
@@ -51,7 +51,7 @@ func (sh *UserHandler) PatchUser(c echo.Context) error {
 
 	objectID, err := model.UpdateOne(
 		context.Background(),
-		userId,
+		userID,
 		models.KeyValue{Key: "first_name", Value: patchReq.FirstName},
 		models.KeyValue{Key: "last_name", Value: patchReq.LastName},
 	)
