@@ -26,10 +26,8 @@ func NewSignUpHandler(db *mongo.Database) *SignUpHandler {
 }
 
 type SignUpRequest struct {
-	Email     string `json:"email" bson:"email"`
-	Password  string `json:"password" bson:"password"`
-	FirstName string `json:"first_name" bson:"first_name"`
-	LastName  string `json:"last_name" bson:"last_name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func (sh *SignUpHandler) PostUser(c echo.Context) error {
@@ -52,7 +50,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		)
 	}
 
-	ur, err := models.NewUserRecord(req.Email, req.Password, req.FirstName, req.LastName)
+	ur, err := models.NewUserRecord(req.Email, req.Password, "", "")
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
