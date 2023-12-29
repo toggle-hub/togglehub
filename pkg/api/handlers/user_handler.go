@@ -9,6 +9,7 @@ import (
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -52,8 +53,10 @@ func (sh *UserHandler) PatchUser(c echo.Context) error {
 	objectID, err := model.UpdateOne(
 		context.Background(),
 		userID,
-		models.KeyValue{Key: "first_name", Value: patchReq.FirstName},
-		models.KeyValue{Key: "last_name", Value: patchReq.LastName},
+		bson.D{
+			{Key: "first_name", Value: patchReq.FirstName},
+			{Key: "last_name", Value: patchReq.LastName},
+		},
 	)
 
 	if err != nil {
