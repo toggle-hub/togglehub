@@ -26,12 +26,12 @@ func (a *App) post(path string, handler echo.HandlerFunc, middlewares ...echo.Mi
 }
 
 // func (a *App) put(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
-// 	a.server.Put(path, handlers...)
+// 	a.server.PUT(path, handler, middlewares...)
 // }
 
-// func (a *App) patch(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
-// 	a.server.Patch(path, handlers...)
-// }
+func (a *App) patch(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
+	a.server.PATCH(path, handler, middlewares...)
+}
 
 func normalizePort(port string) string {
 	if []byte(port)[0] != ':' {
@@ -66,4 +66,7 @@ func registerRoutes(app *App) {
 
 	signInHandler := handlers.NewSignInHandler(app.storage.DB())
 	app.post("/signin", signInHandler.PostSignIn)
+
+	userHandler := handlers.NewUserHandler(app.storage.DB())
+	app.patch("/user", userHandler.PatchUser)
 }

@@ -56,12 +56,27 @@ func (um *UserModel) InsertOne(ctx context.Context, record *UserRecord) (primiti
 	return objectID, nil
 }
 
+func (um *UserModel) UpdateOne(
+	ctx context.Context,
+	id primitive.ObjectID,
+	newValues bson.D,
+) (primitive.ObjectID, error) {
+	filter := bson.D{{Key: "_id", Value: id}}
+	update := bson.D{{Key: "$set", Value: newValues}}
+	_, err := um.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return primitive.ObjectID{}, err
+	}
+
+	return id, nil
+}
+
 type UserRecord struct {
 	ID        primitive.ObjectID  `json:"_id,omitempty" bson:"_id,omitempty"`
 	Email     string              `json:"email" bson:"email"`
 	Password  string              `json:"password" bson:"password"`
-	FirstName string              `json:"first_name" bson:"first_name"`
-	LastName  string              `json:"last_name" bson:"last_name"`
+	FirstName string              `json:"first_name,omitempty" bson:"first_name,omitempty"`
+	LastName  string              `json:"last_name,omitempty" bson:"last_name,omitempty"`
 	CreatedAt primitive.Timestamp `json:"created_at,omitempty" bson:"created_at,omitempty"`
 	UpadtedAt primitive.Timestamp `json:"updated_at,omitempty" bson:"updated_at,omitempty"`
 	DeletedAt primitive.Timestamp `json:"deleted_at,omitempty" bson:"deleted_at,omitempty"`
