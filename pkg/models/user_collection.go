@@ -17,6 +17,10 @@ type UserModel struct {
 	collection *mongo.Collection
 }
 
+type KeyValue struct {
+	Key, Value string
+}
+
 func NewUserModel(collection *mongo.Collection) *UserModel {
 	return &UserModel{
 		collection: collection,
@@ -54,6 +58,25 @@ func (um *UserModel) InsertOne(ctx context.Context, record *UserRecord) (primiti
 	}
 
 	return objectID, nil
+}
+
+func (um *UserModel) UpdateOne(
+	ctx context.Context,
+	id primitive.ObjectID,
+	newValues ...KeyValue,
+) (primitive.ObjectID, error) {
+	filter := bson.D{{Key: "_id", Value: id}}
+	var fields []bson.E
+	for _, v := range newValues {
+		fields = append(fields, bson.E{Key: v.Key, Value: v.Value})
+	}
+	update := bson.D{{Key: "$set", Value: fields}}
+	_, err := um.collection.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		return primitive.ObjectID{}, err
+	}
+
+	return id, nil
 }
 
 type UserRecord struct {
