@@ -1,4 +1,4 @@
-package handlers
+package handlers_test
 
 import (
 	"bytes"
@@ -53,6 +53,7 @@ func (suite *OrganizationHandlerTestSuite) TearDownSuite() {
 func (suite *OrganizationHandlerTestSuite) TestPostSigninHandlerSuccess() {
 	t := suite.T()
 
+	model := models.NewOrganizationModel(suite.db)
 	userModel := models.NewUserModel(suite.db)
 	r, err := models.NewUserRecord(
 		"fizi@gmail.com",
@@ -85,4 +86,8 @@ func (suite *OrganizationHandlerTestSuite) TestPostSigninHandlerSuccess() {
 
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
 	assert.Equal(t, http.StatusCreated, rec.Code)
+
+	organization, err := model.FindByID(context.Background(), jsonRes.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, jsonRes, organization)
 }

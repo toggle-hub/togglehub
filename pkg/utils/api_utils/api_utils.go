@@ -91,5 +91,12 @@ func HandlerErrorLogMessage(err error, c echo.Context) string {
 }
 
 func HandlerLogMessage(resource string, id primitive.ObjectID, c echo.Context) string {
-	return fmt.Sprintf("[Log]: {\"resource\": \"%s\", \"action\":\"%s\", \"_id\":\"%s\", \"ip\": \"%s\", \"location\": \"%s\"}", resource, c.Request().Method, id, c.RealIP(), c.Request().URL.Path)
+	return fmt.Sprintf(
+		"[Log]: {\"resource\": \"%s\", \"action\":\"%s\", \"_id\":\"%s\", \"ip\": \"%s\", \"location\": \"%s\"}",
+		resource,
+		c.Request().Method,
+		id,
+		c.RealIP(),
+		c.Request().URL.Path,
+	)
 }
