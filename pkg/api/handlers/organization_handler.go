@@ -61,6 +61,8 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 		)
 	}
 
+	user.Password = ""
+
 	organization := models.NewOrganizationRecord(req.Name, user)
 
 	model := models.NewOrganizationModel(oh.db)
