@@ -59,7 +59,6 @@ func NewSsoHandlerForTest(
 
 func (sh *SsoHandler) Signin(c echo.Context) error {
 	url := sh.ssogolang.AuthCodeURL(RandomString)
-	log.Println(url)
 	return c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
