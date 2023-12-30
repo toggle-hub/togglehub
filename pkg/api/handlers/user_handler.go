@@ -4,12 +4,12 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -26,6 +26,13 @@ func NewUserHandler(db *mongo.Database) *UserHandler {
 type UserPatchRequest struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
+}
+
+type UserPatchResponse struct {
+	ID        primitive.ObjectID `json:"_id,omitempty"`
+	Email     string             `json:"email" `
+	FirstName string             `json:"first_name,omitempty" `
+	LastName  string             `json:"last_name,omitempty" `
 }
 
 func (sh *UserHandler) PatchUser(c echo.Context) error {
@@ -63,7 +70,7 @@ func (sh *UserHandler) PatchUser(c echo.Context) error {
 		)
 	}
 
-	return c.JSON(http.StatusOK, common.PatchResponse{
+	return c.JSON(http.StatusOK, UserPatchResponse{
 		ID:        objectID,
 		Email:     ur.Email,
 		FirstName: req.FirstName,

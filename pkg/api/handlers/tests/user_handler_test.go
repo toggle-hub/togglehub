@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
@@ -90,7 +89,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 	h := handlers.NewUserHandler(suite.db)
 	suite.Server.PATCH("/user", middlewares.AuthMiddleware(h.PatchUser))
 	suite.Server.ServeHTTP(rec, req)
-	var jsonRes common.PatchResponse
+	var jsonRes handlers.UserPatchResponse
 
 	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
 	assert.NoError(t, err)
@@ -166,7 +165,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields(
 	suite.Server.PATCH("/user", middlewares.AuthMiddleware(h.PatchUser))
 	suite.Server.ServeHTTP(rec, req)
 
-	var jsonRes common.PatchResponse
+	var jsonRes handlers.UserPatchResponse
 
 	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
 	assert.NoError(t, err)
