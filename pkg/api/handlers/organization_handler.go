@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
 
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	"github.com/Roll-Play/togglelabs/pkg/models"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -30,7 +32,7 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 		)
 	}
 
-	_, err := apiutils.GetObjectIDFromContext(c)
+	userID, err := apiutils.GetObjectIDFromContext(c)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		// Should never happen but better safe than sorry
@@ -48,7 +50,36 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 		)
 	}
 
-	// model := models.NewOrganizationModel(oh.db)
+	userModel := models.NewUserModel(oh.db)
+	user, err := userModel.FindByID(context.Background(), userID)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
 
-	return nil
+	organization := models.NewOrganizationRecord(req.Name, user)
+
+	model := models.NewOrganizationModel(oh.db)
+
+	_, err = model.InsertOne(context.Background(), organization)
+
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	return c.JSON(http.StatusCreated, organization)
+}
+
+func NewOrganizationHandler(db *mongo.Database) *OrganizationHandler {
+	return &OrganizationHandler{
+		db: db,
+	}
 }

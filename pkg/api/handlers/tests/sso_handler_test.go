@@ -101,12 +101,11 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerNewUserSuccess() {
 	urlq.Add("state", "random-string")
 	urlq.Add("code", "code")
 	req.URL.RawQuery = urlq.Encode()
-	c := suite.Server.NewContext(req, rec)
 
 	h := handlers.NewSsoHandlerForTest(suite.db, &MockHTTPClient{}, mockOAuthClient)
+	suite.Server.GET("/callback", h.Callback)
+	suite.Server.ServeHTTP(rec, req)
 	var jsonRes common.AuthResponse
-
-	assert.NoError(t, h.Callback(c))
 
 	var ur models.UserRecord
 	assert.NoError(t, collection.FindOne(context.Background(),
@@ -152,12 +151,11 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerExistingUserSuccess() {
 	urlq.Add("state", "random-string")
 	urlq.Add("code", "code")
 	req.URL.RawQuery = urlq.Encode()
-	c := suite.Server.NewContext(req, rec)
 
 	h := handlers.NewSsoHandlerForTest(suite.db, &MockHTTPClient{}, mockOAuthClient)
+	suite.Server.GET("/callback", h.Callback)
+	suite.Server.ServeHTTP(rec, req)
 	var jsonRes common.AuthResponse
-
-	assert.NoError(t, h.Callback(c))
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))

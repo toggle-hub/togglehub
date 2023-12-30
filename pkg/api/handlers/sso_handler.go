@@ -10,7 +10,6 @@ import (
 	"os"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	apierror "github.com/Roll-Play/togglelabs/pkg/api/error"
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
@@ -71,29 +70,23 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	userDataBytes, err := GetUserData(state, code, sh.customOAuthClient, sh.httpClient)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
-		return apierror.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierror.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 	userData := new(models.UserRecord)
 	err = json.Unmarshal(userDataBytes, userData)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
-		return apierror.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierror.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
-	// collection := sh.db.Collection(models.UserCollectionName)
-	// ctx, cancel := context.WithTimeout(context.Background(), config.DBFetchTimeout*time.Second)
-	// defer cancel()
 
-	// var foundRecord models.UserRecord
-
-	// err = collection.FindOne(context.Background(), bson.D{{Key: "email", Value: userData.Email}}).Decode(&foundRecord)
 	model := models.NewUserModel(sh.db)
 	foundRecord, err := model.FindByEmail(context.Background(), userData.Email)
 	if err == nil {
@@ -101,7 +94,11 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 		token, err := apiutils.CreateJWT(foundRecord.ID, config.JWTExpireTime)
 		if err != nil {
 			log.Println(apiutils.HandlerErrorLogMessage(err, c))
-			return apierror.CustomError(c, http.StatusInternalServerError, apierror.InternalServerError)
+			return apierrors.CustomError(
+				c,
+				http.StatusInternalServerError,
+				apierrors.InternalServerError,
+			)
 		}
 		return c.JSON(http.StatusOK, common.AuthResponse{
 			ID:        foundRecord.ID,
@@ -115,23 +112,24 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	objectID, err := model.InsertOne(context.Background(), userData)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
-		return apierror.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierror.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
 	token, err := apiutils.CreateJWT(objectID, config.JWTExpireTime)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
-		return apierror.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierror.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
+	log.Println(apiutils.HandlerLogMessage("user", objectID, c))
 	return c.JSON(http.StatusCreated, common.AuthResponse{
 		ID:    userData.ID,
 		Email: userData.Email,

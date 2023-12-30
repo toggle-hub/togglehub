@@ -2,6 +2,8 @@ package models
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/storage"
 	"go.mongodb.org/mongo-driver/bson"
@@ -32,9 +34,20 @@ func (om *OrganizationModel) FindByID(ctx context.Context, id primitive.ObjectID
 	return record, nil
 }
 
-// func (om *OrganizationModel) InsertOne(ctx context.Context, record *OrganizationRecord, adminID primitive.ObjectID) (primitive.ObjectID, error) {
+func (om *OrganizationModel) InsertOne(ctx context.Context, record *OrganizationRecord) (primitive.ObjectID, error) {
+	result, err := om.collection.InsertOne(ctx, record)
+	if err != nil {
+		return primitive.ObjectID{}, err
+	}
 
-// }
+	objectID, ok := result.InsertedID.(primitive.ObjectID)
+
+	if !ok {
+		return primitive.ObjectID{}, errors.New("unable to assert type of objectID")
+	}
+
+	return objectID, nil
+}
 
 type PermissionLevelEnum = string
 
@@ -52,10 +65,10 @@ type OrganizationMember struct {
 type OrganizationInviteStatus = string
 
 const (
-	Pending  OrganizationInviteStatus = "PENDING"
-	Accepted OrganizationInviteStatus = "ACCEPTED"
-	Denied   OrganizationInviteStatus = "DENIED"
-	CANCELED OrganizationInviteStatus = "CANCELED"
+	Pending   OrganizationInviteStatus = "PENDING"
+	Accepted  OrganizationInviteStatus = "ACCEPTED"
+	Denied    OrganizationInviteStatus = "DENIED"
+	Cancelled OrganizationInviteStatus = "CANCELED"
 )
 
 type OrganizationInvite struct {
@@ -64,9 +77,26 @@ type OrganizationInvite struct {
 }
 
 type OrganizationRecord struct {
-	ID      primitive.ObjectID `json:"_id" bson:"_id"`
-	Name    string
+	ID      primitive.ObjectID   `json:"_id" bson:"_id"`
+	Name    string               `json:"name" bson:"name"`
 	Members []OrganizationMember `json:"members" bson:"members"`
 	Invites []OrganizationInvite `json:"invites" bson:"invites"`
 	storage.Timestamps
+}
+
+func NewOrganizationRecord(name string, admin *UserRecord) *OrganizationRecord {
+	return &OrganizationRecord{
+		ID:   primitive.NewObjectID(),
+		Name: name,
+		Members: []OrganizationMember{
+			{
+				User:            *admin,
+				PermissionLevel: Admin,
+			},
+		},
+		Timestamps: storage.Timestamps{
+			CreatedAt: primitive.Timestamp{T: uint32(time.Now().Unix())},
+			UpadtedAt: primitive.Timestamp{T: uint32(time.Now().Unix())},
+		},
+	}
 }

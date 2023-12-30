@@ -77,6 +77,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		)
 	}
 
+	log.Println(apiutils.HandlerLogMessage("user", objectID, c))
 	return c.JSON(http.StatusCreated, common.AuthResponse{
 		ID:        objectID,
 		Email:     ur.Email,

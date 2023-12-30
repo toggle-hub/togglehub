@@ -75,12 +75,11 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerSuccess() {
 	req := httptest.NewRequest(http.MethodPost, "/signin", bytes.NewBuffer(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
-
 	h := handlers.NewSignInHandler(suite.db)
-	c := suite.Server.NewContext(req, rec)
-	var jsonRes common.AuthResponse
+	suite.Server.POST("/signin", h.PostSignIn)
 
-	assert.NoError(t, h.PostSignIn(c))
+	suite.Server.ServeHTTP(rec, req)
+	var jsonRes common.AuthResponse
 
 	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
 	assert.NoError(t, err)
@@ -106,10 +105,9 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerNotFound() {
 	rec := httptest.NewRecorder()
 
 	h := handlers.NewSignInHandler(suite.db)
-	c := suite.Server.NewContext(req, rec)
+	suite.Server.POST("/signin", h.PostSignIn)
+	suite.Server.ServeHTTP(rec, req)
 	var jsonRes apierrors.Error
-
-	assert.NoError(t, h.PostSignIn(c))
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
@@ -146,10 +144,9 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerUnauthorized() {
 	rec := httptest.NewRecorder()
 
 	h := handlers.NewSignInHandler(suite.db)
-	c := suite.Server.NewContext(req, rec)
+	suite.Server.POST("/signin", h.PostSignIn)
+	suite.Server.ServeHTTP(rec, req)
 	var jsonRes apierrors.Error
-
-	assert.NoError(t, h.PostSignIn(c))
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
