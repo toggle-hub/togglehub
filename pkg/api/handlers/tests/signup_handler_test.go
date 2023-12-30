@@ -54,7 +54,7 @@ func (suite *SignUpHandlerTestSuite) TearDownSuite() {
 func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 	t := suite.T()
 
-	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
+	model := models.NewUserModel(suite.db)
 
 	requestBody := []byte(`{
 		"email": "fizi@gmail.com",
@@ -68,10 +68,9 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 	rec := httptest.NewRecorder()
 
 	h := handlers.NewSignUpHandler(suite.db)
-	c := suite.Server.NewContext(req, rec)
+	suite.Server.POST("/signup", h.PostUser)
+	suite.Server.ServeHTTP(rec, req)
 	var jsonRes common.AuthResponse
-
-	assert.NoError(t, h.PostUser(c))
 
 	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
 	assert.NoError(t, err)
@@ -87,7 +86,7 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 	t := suite.T()
 
-	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
+	model := models.NewUserModel(suite.db)
 
 	r, err := models.NewUserRecord(
 		"fizi@gmail.com",
@@ -110,10 +109,9 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 	rec := httptest.NewRecorder()
 
 	h := handlers.NewSignUpHandler(suite.db)
-	c := suite.Server.NewContext(req, rec)
+	suite.Server.POST("/signup", h.PostUser)
+	suite.Server.ServeHTTP(rec, req)
 	var jsonRes apierrors.Error
-
-	assert.NoError(t, h.PostUser(c))
 
 	_, err = model.FindByEmail(context.Background(), "fizi@gmail.com")
 	assert.NoError(t, err)

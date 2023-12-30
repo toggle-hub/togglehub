@@ -33,7 +33,7 @@ type MockHTTPClient struct{}
 
 func (c *MockHTTPClient) Get(_ string) (*http.Response, error) {
 	response := httptest.NewRecorder()
-	userInfo := handlers.UserInfo{
+	userInfo := models.UserRecord{
 		SsoID: "12345",
 		Email: "test@test.com",
 	}
@@ -101,12 +101,11 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerNewUserSuccess() {
 	urlq.Add("state", "random-string")
 	urlq.Add("code", "code")
 	req.URL.RawQuery = urlq.Encode()
-	c := suite.Server.NewContext(req, rec)
 
 	h := handlers.NewSsoHandlerForTest(suite.db, &MockHTTPClient{}, mockOAuthClient)
+	suite.Server.GET("/callback", h.Callback)
+	suite.Server.ServeHTTP(rec, req)
 	var jsonRes common.AuthResponse
-
-	assert.NoError(t, h.Callback(c))
 
 	var ur models.UserRecord
 	assert.NoError(t, collection.FindOne(context.Background(),
@@ -123,7 +122,7 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerNewUserSuccess() {
 
 func (suite *SignUpHandlerTestSuite) TestSSoHandlerExistingUserSuccess() {
 	t := suite.T()
-	collection := suite.db.Collection(models.UserCollectionName)
+	model := models.NewUserModel(suite.db)
 	mockOAuthClient := &MockOAuthClient{
 		ExchangeFunc: func(ctc context.Context, code string) (*oauth2.Token, error) {
 			return &oauth2.Token{
@@ -134,10 +133,15 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerExistingUserSuccess() {
 		},
 	}
 
-	r := handlers.UserInfo{
-		Email: "test@test.com",
-	}
-	_, err := collection.InsertOne(context.Background(), r)
+	r, err := models.NewUserRecord(
+		"test@test.com",
+		"123123",
+		"fizi",
+		"valores",
+	)
+	assert.NoError(t, err)
+
+	_, err = model.InsertOne(context.Background(), r)
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/callback", nil)
@@ -147,12 +151,11 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerExistingUserSuccess() {
 	urlq.Add("state", "random-string")
 	urlq.Add("code", "code")
 	req.URL.RawQuery = urlq.Encode()
-	c := suite.Server.NewContext(req, rec)
 
 	h := handlers.NewSsoHandlerForTest(suite.db, &MockHTTPClient{}, mockOAuthClient)
+	suite.Server.GET("/callback", h.Callback)
+	suite.Server.ServeHTTP(rec, req)
 	var jsonRes common.AuthResponse
-
-	assert.NoError(t, h.Callback(c))
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))

@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/storage"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/oauth2"
@@ -15,22 +16,6 @@ type App struct {
 
 func (a *App) Listen() error {
 	return a.server.Start(a.port)
-}
-
-func (a *App) get(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
-	a.server.GET(path, handler, middlewares...)
-}
-
-func (a *App) post(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
-	a.server.POST(path, handler, middlewares...)
-}
-
-// func (a *App) put(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
-// 	a.server.PUT(path, handler, middlewares...)
-// }
-
-func (a *App) patch(path string, handler echo.HandlerFunc, middlewares ...echo.MiddlewareFunc) {
-	a.server.PATCH(path, handler, middlewares...)
 }
 
 func normalizePort(port string) string {
@@ -55,18 +40,22 @@ func NewApp(port string, storage *storage.MongoStorage) *App {
 }
 
 func registerRoutes(app *App) {
-	app.get("/healthz", handlers.HealthHandler)
+	app.server.GET("/healthz", handlers.HealthHandler)
 
 	ssoHandler := handlers.NewSsoHandler(&oauth2.Config{}, app.storage.DB())
-	app.post("/oauth", ssoHandler.Signin)
-	app.get("/callback", ssoHandler.Callback)
+	app.server.POST("/oauth", ssoHandler.Signin)
+	app.server.GET("/callback", ssoHandler.Callback)
 
 	signUpHandler := handlers.NewSignUpHandler(app.storage.DB())
-	app.post("/signup", signUpHandler.PostUser)
+	app.server.POST("/signup", signUpHandler.PostUser)
 
 	signInHandler := handlers.NewSignInHandler(app.storage.DB())
-	app.post("/signin", signInHandler.PostSignIn)
+	app.server.POST("/signin", signInHandler.PostSignIn)
 
 	userHandler := handlers.NewUserHandler(app.storage.DB())
-	app.patch("/user", userHandler.PatchUser)
+	app.server.PATCH("/user", userHandler.PatchUser)
+
+	organizationHandler := handlers.NewOrganizationHandler(app.storage.DB())
+	organizationGroup := app.server.Group("/organization", middlewares.AuthMiddleware)
+	organizationGroup.POST("/organization", organizationHandler.PostOrganization)
 }

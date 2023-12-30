@@ -4,15 +4,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
-	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +57,7 @@ func (suite *UserHandlerTestSuite) TearDownSuite() {
 func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 	t := suite.T()
 
-	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
+	model := models.NewUserModel(suite.db)
 
 	r, err := models.NewUserRecord(
 		"fizi@gmail.com",
@@ -74,16 +77,19 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 	requestBody, err := json.Marshal(patchInfo)
 	assert.NoError(t, err)
 
+	token, err := apiutils.CreateJWT(userID, time.Second*120)
+
+	assert.NoError(t, err)
+
 	req := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
 	rec := httptest.NewRecorder()
-	c := suite.Server.NewContext(req, rec)
-	c.Set("user", userID)
 
 	h := handlers.NewUserHandler(suite.db)
-	var jsonRes common.PatchResponse
-
-	assert.NoError(t, h.PatchUser(c))
+	suite.Server.PATCH("/user", middlewares.AuthMiddleware(h.PatchUser))
+	suite.Server.ServeHTTP(rec, req)
+	var jsonRes handlers.UserPatchResponse
 
 	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
 	assert.NoError(t, err)
@@ -104,16 +110,18 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
 	requestBody, err := json.Marshal(patchInfo)
 	assert.NoError(t, err)
 
+	token, err := apiutils.CreateJWT(primitive.NewObjectID(), time.Second*120)
+	assert.NoError(t, err)
+
 	req := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+
 	rec := httptest.NewRecorder()
-	c := suite.Server.NewContext(req, rec)
-	c.Set("user", primitive.NewObjectID())
-
 	h := handlers.NewUserHandler(suite.db)
+	suite.Server.PATCH("/user", middlewares.AuthMiddleware(h.PatchUser))
+	suite.Server.ServeHTTP(rec, req)
 	var jsonRes apierrors.Error
-
-	assert.NoError(t, h.PatchUser(c))
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
@@ -125,7 +133,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
 
 func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields() {
 	t := suite.T()
-	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
+	model := models.NewUserModel(suite.db)
 
 	r, err := models.NewUserRecord(
 		"fizi@gmail.com",
@@ -145,16 +153,19 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields(
 			"email": "new@email.mail"
 		}`)
 
+	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	assert.NoError(t, err)
 	req := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+
 	rec := httptest.NewRecorder()
-	c := suite.Server.NewContext(req, rec)
-	c.Set("user", userID)
 
 	h := handlers.NewUserHandler(suite.db)
-	var jsonRes common.PatchResponse
+	suite.Server.PATCH("/user", middlewares.AuthMiddleware(h.PatchUser))
+	suite.Server.ServeHTTP(rec, req)
 
-	assert.NoError(t, h.PatchUser(c))
+	var jsonRes handlers.UserPatchResponse
 
 	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
 	assert.NoError(t, err)
