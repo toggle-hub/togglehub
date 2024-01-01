@@ -73,7 +73,7 @@ var ErrContextUserTypeAssertion = errors.New("unable to assert type of user in c
 
 func GetObjectIDFromContext(c echo.Context) (primitive.ObjectID, error) {
 	ctxUser := c.Get("user")
-	if ctxUser != nil {
+	if ctxUser == nil {
 		return primitive.NilObjectID, ErrNotAuthenticated
 	}
 

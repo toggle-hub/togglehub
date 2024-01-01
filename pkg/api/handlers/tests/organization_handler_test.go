@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"testing"
 	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
@@ -17,6 +18,7 @@ import (
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -35,8 +37,8 @@ func (suite *OrganizationHandlerTestSuite) SetupTest() {
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
 
-	h := handlers.NewSignInHandler(suite.db)
-	suite.Server.POST("/organization", middlewares.AuthMiddleware(h.PostSignIn))
+	h := handlers.NewOrganizationHandler(suite.db)
+	suite.Server.POST("/organization", middlewares.AuthMiddleware(h.PostOrganization))
 }
 
 func (suite *OrganizationHandlerTestSuite) AfterTest(_, _ string) {
@@ -67,13 +69,13 @@ func (suite *OrganizationHandlerTestSuite) TestPostOrganizationHandlerSuccess() 
 	assert.NoError(t, err)
 
 	userID, err := userModel.InsertOne(context.Background(), r)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 
 	token, err := apiutils.CreateJWT(userID, time.Second*120)
 	assert.NoError(t, err)
 
 	requestBody := []byte(`{
-		"name": "the company",
+		"name": "the company"
 	}`)
 
 	req := httptest.NewRequest(http.MethodPost, "/organization", bytes.NewBuffer(requestBody))
@@ -90,5 +92,11 @@ func (suite *OrganizationHandlerTestSuite) TestPostOrganizationHandlerSuccess() 
 
 	organization, err := model.FindByID(context.Background(), jsonRes.ID)
 	assert.NoError(t, err)
-	assert.Equal(t, jsonRes, organization)
+	assert.Equal(t, jsonRes.ID, organization.ID)
+	assert.Equal(t, jsonRes.Members, organization.Members)
+	assert.Equal(t, jsonRes.Name, organization.Name)
+}
+
+func TestOrganizationHandlerTestSuite(t *testing.T) {
+	suite.Run(t, new(OrganizationHandlerTestSuite))
 }

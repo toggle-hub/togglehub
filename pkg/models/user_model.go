@@ -97,7 +97,7 @@ func NewUserRecord(email, password, firstName, lastName string) (*UserRecord, er
 		FirstName: firstName,
 		LastName:  lastName,
 		Timestamps: storage.Timestamps{
-			CreatedAt: primitive.Timestamp{T: uint32(time.Now().Unix())},
-			UpadtedAt: primitive.Timestamp{T: uint32(time.Now().Unix())},
+			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
+			UpadtedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		}}, nil
 }

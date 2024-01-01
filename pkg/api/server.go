@@ -29,14 +29,15 @@ func normalizePort(port string) string {
 func NewApp(port string, storage *storage.MongoStorage) *App {
 	server := echo.New()
 
-	App := &App{
+	app := &App{
 		server:  server,
 		port:    normalizePort(port),
 		storage: storage,
 	}
 
-	registerRoutes(App)
-	return App
+	registerRoutes(app)
+
+	return app
 }
 
 func registerRoutes(app *App) {
@@ -54,9 +55,9 @@ func registerRoutes(app *App) {
 
 	userHandler := handlers.NewUserHandler(app.storage.DB())
 	userGroup := app.server.Group("/user", middlewares.AuthMiddleware)
-	userGroup.PATCH("/user", userHandler.PatchUser)
+	userGroup.PATCH("", userHandler.PatchUser)
 
 	organizationHandler := handlers.NewOrganizationHandler(app.storage.DB())
 	organizationGroup := app.server.Group("/organization", middlewares.AuthMiddleware)
-	organizationGroup.POST("/", organizationHandler.PostOrganization)
+	organizationGroup.POST("", organizationHandler.PostOrganization)
 }
