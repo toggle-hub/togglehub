@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
@@ -28,17 +29,19 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 	req := new(SignInRequest)
 
 	if err := c.Bind(req); err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
 		)
 	}
 
-	model := models.NewUserModel(sh.db.Collection(models.UserCollectionName))
+	model := models.NewUserModel(sh.db)
 
 	ur, err := model.FindByEmail(context.Background(), req.Email)
 
 	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return apierrors.CustomError(c,
 				http.StatusNotFound,
@@ -54,11 +57,17 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(ur.Password), []byte(req.Password)); err != nil {
-		return apierrors.CustomError(c, http.StatusUnauthorized, apierrors.UnauthorizedError)
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusUnauthorized,
+			apierrors.UnauthorizedError,
+		)
 	}
 
 	token, err := apiutils.CreateJWT(ur.ID, config.JWTExpireTime)
 	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,

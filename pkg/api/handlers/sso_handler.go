@@ -4,21 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	apierror "github.com/Roll-Play/togglelabs/pkg/api/error"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -29,12 +25,6 @@ type SsoHandler struct {
 	db                *mongo.Database
 	httpClient        apiutils.BaseHTTPClient
 	customOAuthClient apiutils.OAuthClient
-}
-
-type UserInfo struct {
-	ID    primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
-	SsoID string             `json:"sso_id" bson:"sso_id"`
-	Email string             `json:"email" bson:"email"`
 }
 
 var RandomString = "random-string"
@@ -69,7 +59,6 @@ func NewSsoHandlerForTest(
 
 func (sh *SsoHandler) Signin(c echo.Context) error {
 	url := sh.ssogolang.AuthCodeURL(RandomString)
-	fmt.Println(url)
 	return c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
@@ -79,23 +68,36 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	log.Print(state, code)
 	userDataBytes, err := GetUserData(state, code, sh.customOAuthClient, sh.httpClient)
 	if err != nil {
-		return apierror.CustomError(c, http.StatusInternalServerError, apierror.InternalServerError)
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
 	}
-	var userData = new(UserInfo)
+	userData := new(models.UserRecord)
 	err = json.Unmarshal(userDataBytes, userData)
 	if err != nil {
-		return apierror.CustomError(c, http.StatusInternalServerError, apierror.InternalServerError)
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
 	}
-	collection := sh.db.Collection(models.UserCollectionName)
-	ctx, cancel := context.WithTimeout(context.Background(), config.DBFetchTimeout*time.Second)
-	defer cancel()
 
-	var foundRecord models.UserRecord
-	err = collection.FindOne(context.Background(), bson.D{{Key: "email", Value: userData.Email}}).Decode(&foundRecord)
+	model := models.NewUserModel(sh.db)
+	foundRecord, err := model.FindByEmail(context.Background(), userData.Email)
 	if err == nil {
+		log.Println(apiutils.HandlerErrorLogMessage(errors.New(apierrors.EmailConflictError), c))
 		token, err := apiutils.CreateJWT(foundRecord.ID, config.JWTExpireTime)
 		if err != nil {
-			return apierror.CustomError(c, http.StatusInternalServerError, apierror.InternalServerError)
+			log.Println(apiutils.HandlerErrorLogMessage(err, c))
+			return apierrors.CustomError(
+				c,
+				http.StatusInternalServerError,
+				apierrors.InternalServerError,
+			)
 		}
 		return c.JSON(http.StatusOK, common.AuthResponse{
 			ID:        foundRecord.ID,
@@ -106,24 +108,27 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 		})
 	}
 
-	result, err := collection.InsertOne(ctx, userData)
+	objectID, err := model.InsertOne(context.Background(), userData)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": err.Error(),
-		})
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
 	}
 
-	objectID := result.InsertedID
-	oID, ok := objectID.(primitive.ObjectID)
-	if !ok {
-		return apierror.CustomError(c, http.StatusInternalServerError, apierror.InternalServerError)
-	}
-
-	token, err := apiutils.CreateJWT(oID, config.JWTExpireTime)
+	token, err := apiutils.CreateJWT(objectID, config.JWTExpireTime)
 	if err != nil {
-		return apierror.CustomError(c, http.StatusInternalServerError, apierror.InternalServerError)
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
 	}
 
+	log.Println(apiutils.HandlerLogMessage("user", objectID, c))
 	return c.JSON(http.StatusCreated, common.AuthResponse{
 		ID:    userData.ID,
 		Email: userData.Email,

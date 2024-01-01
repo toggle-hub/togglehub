@@ -13,7 +13,7 @@ const (
 	InternalServerError ErrorMessage = "internal server error"
 	EmailConflictError  ErrorMessage = "email already in use"
 	UnauthorizedError   ErrorMessage = "user lacks valid authentication credentials"
-	BadRequestError     ErrorMessage = "bad request"
+	BadRequestError     ErrorMessage = "malformed request"
 )
 
 type Error struct {
