@@ -87,7 +87,12 @@ func GetObjectIDFromContext(c echo.Context) (primitive.ObjectID, error) {
 }
 
 func HandlerErrorLogMessage(err error, c echo.Context) string {
-	return fmt.Sprintf("[Error]: {\"error\": \"%s\", \"location\": \"%s\"}", err.Error(), c.Request().URL.Path)
+	return fmt.Sprintf(
+		"[Error]: {\"error\": \"%s\", \"ip\": \"%s\", \"location\": \"%s\"}",
+		err.Error(),
+		c.RealIP(),
+		c.Request().URL.Path,
+	)
 }
 
 func HandlerLogMessage(resource string, id primitive.ObjectID, c echo.Context) string {

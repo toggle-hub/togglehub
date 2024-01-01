@@ -35,6 +35,9 @@ func (suite *SignUpHandlerTestSuite) SetupTest() {
 
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
+
+	h := handlers.NewSignUpHandler(suite.db)
+	suite.Server.POST("/signup", h.PostUser)
 }
 
 func (suite *SignUpHandlerTestSuite) AfterTest(_, _ string) {
@@ -67,8 +70,6 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 
-	h := handlers.NewSignUpHandler(suite.db)
-	suite.Server.POST("/signup", h.PostUser)
 	suite.Server.ServeHTTP(rec, req)
 	var jsonRes common.AuthResponse
 
@@ -108,8 +109,6 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 
-	h := handlers.NewSignUpHandler(suite.db)
-	suite.Server.POST("/signup", h.PostUser)
 	suite.Server.ServeHTTP(rec, req)
 	var jsonRes apierrors.Error
 

@@ -34,6 +34,9 @@ func (suite *OrganizationHandlerTestSuite) SetupTest() {
 
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
+
+	h := handlers.NewSignInHandler(suite.db)
+	suite.Server.POST("/organization", middlewares.AuthMiddleware(h.PostSignIn))
 }
 
 func (suite *OrganizationHandlerTestSuite) AfterTest(_, _ string) {
@@ -50,7 +53,7 @@ func (suite *OrganizationHandlerTestSuite) TearDownSuite() {
 	suite.Server.Close()
 }
 
-func (suite *OrganizationHandlerTestSuite) TestPostSigninHandlerSuccess() {
+func (suite *OrganizationHandlerTestSuite) TestPostOrganizationHandlerSuccess() {
 	t := suite.T()
 
 	model := models.NewOrganizationModel(suite.db)
@@ -78,8 +81,6 @@ func (suite *OrganizationHandlerTestSuite) TestPostSigninHandlerSuccess() {
 	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
 	rec := httptest.NewRecorder()
 
-	h := handlers.NewSignInHandler(suite.db)
-	suite.Server.POST("/organization", middlewares.AuthMiddleware(h.PostSignIn))
 	suite.Server.ServeHTTP(rec, req)
 
 	var jsonRes models.OrganizationRecord

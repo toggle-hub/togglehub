@@ -53,9 +53,10 @@ func registerRoutes(app *App) {
 	app.server.POST("/signin", signInHandler.PostSignIn)
 
 	userHandler := handlers.NewUserHandler(app.storage.DB())
-	app.server.PATCH("/user", userHandler.PatchUser)
+	userGroup := app.server.Group("/user", middlewares.AuthMiddleware)
+	userGroup.PATCH("/user", userHandler.PatchUser)
 
 	organizationHandler := handlers.NewOrganizationHandler(app.storage.DB())
 	organizationGroup := app.server.Group("/organization", middlewares.AuthMiddleware)
-	organizationGroup.POST("/organization", organizationHandler.PostOrganization)
+	organizationGroup.POST("/", organizationHandler.PostOrganization)
 }
