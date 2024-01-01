@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -30,22 +31,31 @@ const (
 	Archived RevisionStatus = "archived"
 )
 
-type Environment struct {
-	Name      string `json:"name" bson:"name"`
+type Tuple[T comparable, U comparable] struct {
+	First  T
+	Second U
+}
+
+func NewTuple[T comparable, U comparable](first T, second U) *Tuple[T, U] {
+	return &Tuple[T, U]{
+		First:  first,
+		Second: second,
+	}
+}
+
+type Rule struct {
+	Predicate string `json:"predicate" bson:"predicate"`
+	Value     string `json:"value" bson:"value"`
+	Env       string `json:"env" bson:"env"`
 	IsEnabled bool   `json:"is_enabled" bson:"is_enabled"`
 }
 
-type RevisionRule struct {
-	Attributes map[string]string `json:"attributes" bson:"attributes"`
-}
-
 type Revision struct {
-	Creator      primitive.ObjectID `json:"creator_id" bson:"creator_id"`
+	UserID       primitive.ObjectID `json:"user_id" bson:"user_id"`
 	Version      int                `json:"version" bson:"version"`
 	Status       RevisionStatus     `json:"status" bson:"status"`
 	DefaultValue string             `json:"default_value" bson:"default_value"`
-	Environments []Environment
-	Rules        []RevisionRule
+	Rules        []Rule
 }
 
 type FlagType = string
@@ -60,7 +70,7 @@ const (
 type FeatureFlagRecord struct {
 	ID        primitive.ObjectID `json:"_id,omitempty" bson:"_id"`
 	OrgID     primitive.ObjectID `json:"org_id" bson:"org_id"`
-	CreatorID primitive.ObjectID `json:"creator_id" bson:"creator_id"`
+	UserID    primitive.ObjectID `json:"user_id" bson:"user_id"`
 	Type      FlagType           `json:"type" bson:"type"`
 	Revisions []Revision
 }
@@ -68,28 +78,24 @@ type FeatureFlagRecord struct {
 type FeatureFlagRequest struct {
 	Type         FlagType `json:"type" `
 	DefaultValue string   `json:"default_value"`
-	Environments Environment
-	Rules        []RevisionRule
+	Rules        []Rule
 }
 
 func (ffm *FeatureFlagModel) NewFeatureFlagRecord(
 	req *FeatureFlagRequest,
-	orgID, creatorID primitive.ObjectID,
+	orgID, userID primitive.ObjectID,
 ) (*FeatureFlagRecord, error) {
 	return &FeatureFlagRecord{
-		OrgID:     orgID,
-		CreatorID: creatorID,
-		Type:      req.Type,
+		OrgID:  orgID,
+		UserID: userID,
+		Type:   req.Type,
 		Revisions: []Revision{
 			Revision{
-				Creator:      creatorID,
+				UserID:       userID,
 				Version:      1,
 				Status:       Draft,
 				DefaultValue: req.DefaultValue,
-				Environments: []Environment{
-					req.Environments,
-				},
-				Rules: req.Rules,
+				Rules:        req.Rules,
 			},
 		},
 	}, nil
@@ -108,4 +114,12 @@ func (ffm *FeatureFlagModel) InsertOne(ctx context.Context, rec *FeatureFlagReco
 	}
 
 	return objectId, nil
+}
+
+func (ffm *FeatureFlagModel) FindByID(ctx context.Context, id primitive.ObjectID) (*FeatureFlagRecord, error) {
+	record := new(FeatureFlagRecord)
+	if err := ffm.collection.FindOne(ctx, bson.D{{Key: "_id", Value: id}}).Decode(record); err != nil {
+		return nil, err
+	}
+	return record, nil
 }
