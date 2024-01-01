@@ -95,8 +95,8 @@ func NewOrganizationRecord(name string, admin *UserRecord) *OrganizationRecord {
 			},
 		},
 		Timestamps: storage.Timestamps{
-			CreatedAt: primitive.Timestamp{T: uint32(time.Now().Unix())},
-			UpadtedAt: primitive.Timestamp{T: uint32(time.Now().Unix())},
+			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
+			UpadtedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},
 	}
 }
