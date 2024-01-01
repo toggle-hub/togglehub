@@ -38,6 +38,9 @@ func (suite *UserHandlerTestSuite) SetupTest() {
 
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
+
+	h := handlers.NewUserHandler(suite.db)
+	suite.Server.PATCH("/user", middlewares.AuthMiddleware(h.PatchUser))
 }
 
 func (suite *UserHandlerTestSuite) AfterTest(_, _ string) {
@@ -86,8 +89,6 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
 	rec := httptest.NewRecorder()
 
-	h := handlers.NewUserHandler(suite.db)
-	suite.Server.PATCH("/user", middlewares.AuthMiddleware(h.PatchUser))
 	suite.Server.ServeHTTP(rec, req)
 	var jsonRes handlers.UserPatchResponse
 
@@ -116,10 +117,8 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
 	req := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-
 	rec := httptest.NewRecorder()
-	h := handlers.NewUserHandler(suite.db)
-	suite.Server.PATCH("/user", middlewares.AuthMiddleware(h.PatchUser))
+
 	suite.Server.ServeHTTP(rec, req)
 	var jsonRes apierrors.Error
 
@@ -161,8 +160,6 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields(
 
 	rec := httptest.NewRecorder()
 
-	h := handlers.NewUserHandler(suite.db)
-	suite.Server.PATCH("/user", middlewares.AuthMiddleware(h.PatchUser))
 	suite.Server.ServeHTTP(rec, req)
 
 	var jsonRes handlers.UserPatchResponse

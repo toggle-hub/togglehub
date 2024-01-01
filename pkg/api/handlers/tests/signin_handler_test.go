@@ -34,6 +34,9 @@ func (suite *SignInHandlerTestSuite) SetupTest() {
 
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
+
+	h := handlers.NewSignInHandler(suite.db)
+	suite.Server.POST("/signin", h.PostSignIn)
 }
 
 func (suite *SignInHandlerTestSuite) AfterTest(_, _ string) {
@@ -75,8 +78,6 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerSuccess() {
 	req := httptest.NewRequest(http.MethodPost, "/signin", bytes.NewBuffer(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
-	h := handlers.NewSignInHandler(suite.db)
-	suite.Server.POST("/signin", h.PostSignIn)
 
 	suite.Server.ServeHTTP(rec, req)
 	var jsonRes common.AuthResponse
@@ -104,8 +105,6 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerNotFound() {
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 
-	h := handlers.NewSignInHandler(suite.db)
-	suite.Server.POST("/signin", h.PostSignIn)
 	suite.Server.ServeHTTP(rec, req)
 	var jsonRes apierrors.Error
 
@@ -143,8 +142,6 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerUnauthorized() {
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 
-	h := handlers.NewSignInHandler(suite.db)
-	suite.Server.POST("/signin", h.PostSignIn)
 	suite.Server.ServeHTTP(rec, req)
 	var jsonRes apierrors.Error
 
