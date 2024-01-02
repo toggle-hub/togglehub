@@ -23,7 +23,6 @@ type OrganizationPostRequest struct {
 
 func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 	req := new(OrganizationPostRequest)
-
 	if err := c.Bind(req); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,

@@ -10,9 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
@@ -23,7 +22,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type FeatureFlagHandlerTestSuite struct {
@@ -39,6 +37,9 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
+
+	h := handlers.NewFeatureFlagHandler(suite.db)
+	suite.Server.POST("organization/:orgID/featureFlag", middlewares.AuthMiddleware(h.PostFeatureFlag))
 }
 
 func (suite *FeatureFlagHandlerTestSuite) AfterTest(_, _ string) {
@@ -58,82 +59,82 @@ func (suite *FeatureFlagHandlerTestSuite) TearDownSuite() {
 func (suite *FeatureFlagHandlerTestSuite) TestSignUpHandlerSuccess() {
 	t := suite.T()
 
-	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
-
-	requestBody := []byte(`{
-		"email": "fizi@gmail.com",
-		"password": "123123",
-		"first_name": "fizi",
-		"last_name": "valores"
-	}`)
-
-	token, err := apiutils.CreateJWT(primitive.NewObjectID(), time.Second*120)
+	rule := models.Rule{
+		Predicate: "attr: rule",
+		Value:     "false",
+		Env:       "prd",
+		IsEnabled: true,
+	}
+	ffr := models.FeatureFlagRequest{
+		Type:         models.Boolean,
+		DefaultValue: "true",
+		Rules: []models.Rule{
+			rule,
+		},
+	}
+	requestBody, err := json.Marshal(ffr)
+	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", suite.db)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodPost, "/signup", bytes.NewBuffer(requestBody))
+	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/organization/"+orgID.Hex()+"/featureFlag",
+		bytes.NewBuffer(requestBody),
+	)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
 	rec := httptest.NewRecorder()
 
-	h := handlers.NewSignUpHandler(suite.db)
-	c := suite.Server.NewContext(req, rec)
-	var jsonRes common.AuthResponse
+	suite.Server.ServeHTTP(rec, req)
 
-	assert.NoError(t, h.PostUser(c))
+	var jsonRes models.FeatureFlagRecord
 
-	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
-	assert.NoError(t, err)
-
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
 	assert.Equal(t, http.StatusCreated, rec.Code)
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, jsonRes.Email, ur.Email)
-	assert.Equal(t, jsonRes.FirstName, ur.FirstName)
-	assert.Equal(t, jsonRes.LastName, ur.LastName)
-	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(ur.Password), []byte("123123")))
-}
+	assert.Equal(t, userID, jsonRes.UserID)
+	assert.Equal(t, orgID, jsonRes.OrgID)
+	assert.Equal(t, ffr.Type, jsonRes.Type)
 
-func (suite *FeatureFlagHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
-	t := suite.T()
+	assert.NotEmpty(t, jsonRes.Revisions)
+	responseRevision := jsonRes.Revisions[0]
+	assert.Equal(t, userID, responseRevision.UserID)
+	assert.Equal(t, ffr.DefaultValue, responseRevision.DefaultValue)
+	assert.Equal(t, models.Draft, responseRevision.Status)
 
-	model := models.NewUserModel(suite.db.Collection(models.UserCollectionName))
-
-	r, err := models.NewUserRecord(
-		"fizi@gmail.com",
-		"123123",
-		"fizi",
-		"valores",
-	)
-
-	assert.NoError(t, err)
-
-	_, err = model.InsertOne(context.Background(), r)
-
-	assert.NoError(t, err)
-
-	requestBody, err := json.Marshal(r)
-	assert.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/signup", bytes.NewBuffer(requestBody))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-
-	h := handlers.NewSignUpHandler(suite.db)
-	c := suite.Server.NewContext(req, rec)
-	var jsonRes apierrors.Error
-
-	assert.NoError(t, h.PostUser(c))
-
-	_, err = model.FindByEmail(context.Background(), "fizi@gmail.com")
-	assert.NoError(t, err)
-
-	assert.Equal(t, http.StatusConflict, rec.Code)
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, jsonRes, apierrors.Error{
-		Error:   http.StatusText(http.StatusConflict),
-		Message: apierrors.EmailConflictError,
-	})
+	assert.NotEmpty(t, responseRevision.Rules)
+	responseRule := responseRevision.Rules[0]
+	assert.Equal(t, rule.Predicate, responseRule.Predicate)
+	assert.Equal(t, rule.Value, responseRule.Value)
+	assert.Equal(t, rule.Env, responseRule.Env)
+	assert.Equal(t, rule.IsEnabled, responseRule.IsEnabled)
 }
 
 func TestFeatureFlagHandlerTestSuite(t *testing.T) {
 	suite.Run(t, new(FeatureFlagHandlerTestSuite))
+}
+
+func setupUserAndOrg(email, orgName string, db *mongo.Database) (primitive.ObjectID, primitive.ObjectID, error) {
+	uModel := models.NewUserModel(db)
+	userRecord, err := models.NewUserRecord(email, "default", "fizi", "valores")
+	if err != nil {
+		return primitive.NewObjectID(), primitive.NewObjectID(), err
+	}
+
+	userID, err := uModel.InsertOne(context.Background(), userRecord)
+	if err != nil {
+		return primitive.NewObjectID(), primitive.NewObjectID(), err
+	}
+	userRecord.ID = userID
+
+	oModel := models.NewOrganizationModel(db)
+	orgRecord := models.NewOrganizationRecord(orgName, userRecord)
+	orgID, err := oModel.InsertOne(context.Background(), orgRecord)
+	if err != nil {
+		return primitive.NewObjectID(), primitive.NewObjectID(), err
+	}
+
+	return userID, orgID, nil
 }
