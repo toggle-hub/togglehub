@@ -3,7 +3,9 @@ package models
 import (
 	"context"
 	"errors"
+	"time"
 
+	"github.com/Roll-Play/togglelabs/pkg/storage"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -73,6 +75,7 @@ type FeatureFlagRecord struct {
 	UserID    primitive.ObjectID `json:"user_id" bson:"user_id"`
 	Type      FlagType           `json:"type" bson:"type"`
 	Revisions []Revision
+	storage.Timestamps
 }
 
 type FeatureFlagRequest struct {
@@ -97,6 +100,10 @@ func (ffm *FeatureFlagModel) NewFeatureFlagRecord(
 				DefaultValue: req.DefaultValue,
 				Rules:        req.Rules,
 			},
+		},
+		Timestamps: storage.Timestamps{
+			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
+			UpadtedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},
 	}, nil
 }
