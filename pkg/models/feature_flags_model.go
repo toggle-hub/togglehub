@@ -33,18 +33,6 @@ const (
 	Archived RevisionStatus = "archived"
 )
 
-type Tuple[T comparable, U comparable] struct {
-	First  T
-	Second U
-}
-
-func NewTuple[T comparable, U comparable](first T, second U) *Tuple[T, U] {
-	return &Tuple[T, U]{
-		First:  first,
-		Second: second,
-	}
-}
-
 type Rule struct {
 	Predicate string `json:"predicate" bson:"predicate"`
 	Value     string `json:"value" bson:"value"`
