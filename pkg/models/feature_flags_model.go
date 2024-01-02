@@ -89,7 +89,6 @@ func (ffm *FeatureFlagModel) NewFeatureFlagRecord(
 	orgID, userID primitive.ObjectID,
 ) (*FeatureFlagRecord, error) {
 	return &FeatureFlagRecord{
-		ID:     primitive.NewObjectID(),
 		OrgID:  orgID,
 		UserID: userID,
 		Type:   req.Type,
@@ -110,15 +109,16 @@ func (ffm *FeatureFlagModel) NewFeatureFlagRecord(
 }
 
 func (ffm *FeatureFlagModel) InsertOne(ctx context.Context, rec *FeatureFlagRecord) (primitive.ObjectID, error) {
+	rec.ID = primitive.NewObjectID()
 	result, err := ffm.collection.InsertOne(ctx, rec)
 	if err != nil {
-		return primitive.ObjectID{}, err
+		return primitive.NilObjectID, err
 	}
 
 	objectID, ok := result.InsertedID.(primitive.ObjectID)
 
 	if !ok {
-		return primitive.ObjectID{}, errors.New("unable to assert type of objectID")
+		return primitive.NilObjectID, errors.New("unable to assert type of objectID")
 	}
 
 	return objectID, nil
