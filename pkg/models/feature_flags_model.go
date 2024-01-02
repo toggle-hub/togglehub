@@ -89,6 +89,7 @@ func (ffm *FeatureFlagModel) NewFeatureFlagRecord(
 	orgID, userID primitive.ObjectID,
 ) (*FeatureFlagRecord, error) {
 	return &FeatureFlagRecord{
+		ID:     primitive.NewObjectID(),
 		OrgID:  orgID,
 		UserID: userID,
 		Type:   req.Type,
