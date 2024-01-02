@@ -24,7 +24,6 @@ func NewFeatureFlagHandler(db *mongo.Database) *FeatureFlagHandler {
 }
 
 func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
-	log.Print("AAAAAAAAAAAAAAAAAAA")
 	userID, err := apiutils.GetObjectIDFromContext(c)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
