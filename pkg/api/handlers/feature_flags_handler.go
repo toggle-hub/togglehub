@@ -56,6 +56,14 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 
 	model := models.NewFeatureFlagModel(ffh.db)
 	ffr, err := model.NewFeatureFlagRecord(req, orgID, userID)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
 	newRecID, err := model.InsertOne(context.Background(), ffr)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))

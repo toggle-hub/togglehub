@@ -73,6 +73,8 @@ func (suite *FeatureFlagHandlerTestSuite) TestSignUpHandlerSuccess() {
 		},
 	}
 	requestBody, err := json.Marshal(ffr)
+	assert.NoError(t, err)
+
 	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", suite.db)
 	assert.NoError(t, err)
 

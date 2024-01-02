@@ -64,7 +64,7 @@ type FlagType = string
 
 const (
 	Boolean FlagType = "boolean"
-	Json    FlagType = "json"
+	JSON    FlagType = "json"
 	String  FlagType = "string"
 	Number  FlagType = "number"
 )
@@ -93,7 +93,7 @@ func (ffm *FeatureFlagModel) NewFeatureFlagRecord(
 		UserID: userID,
 		Type:   req.Type,
 		Revisions: []Revision{
-			Revision{
+			{
 				UserID:       userID,
 				Version:      1,
 				Status:       Draft,
@@ -114,13 +114,13 @@ func (ffm *FeatureFlagModel) InsertOne(ctx context.Context, rec *FeatureFlagReco
 		return primitive.ObjectID{}, err
 	}
 
-	objectId, ok := result.InsertedID.(primitive.ObjectID)
+	objectID, ok := result.InsertedID.(primitive.ObjectID)
 
 	if !ok {
 		return primitive.ObjectID{}, errors.New("unable to assert type of objectID")
 	}
 
-	return objectId, nil
+	return objectID, nil
 }
 
 func (ffm *FeatureFlagModel) FindByID(ctx context.Context, id primitive.ObjectID) (*FeatureFlagRecord, error) {
