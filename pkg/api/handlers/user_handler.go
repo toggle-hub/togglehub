@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"context"
+	"errors"
+	"log"
 	"net/http"
 
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
-	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/models"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -36,16 +38,6 @@ type UserPatchResponse struct {
 }
 
 func (sh *UserHandler) PatchUser(c echo.Context) error {
-	user := c.Get("user").(middlewares.ContextUser)
-	model := models.NewUserModel(sh.db)
-	ur, err := model.FindByID(context.Background(), user.ID)
-	if err != nil {
-		return apierrors.CustomError(c,
-			http.StatusNotFound,
-			apierrors.NotFoundError,
-		)
-	}
-
 	req := new(UserPatchRequest)
 	if err := c.Bind(req); err != nil {
 		return apierrors.CustomError(c,
@@ -54,9 +46,31 @@ func (sh *UserHandler) PatchUser(c echo.Context) error {
 		)
 	}
 
+	userID, err := apiutils.GetObjectIDFromContext(c)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		// Should never happen but better safe than sorry
+		if errors.Is(err, apiutils.ErrNotAuthenticated) {
+			return apierrors.CustomError(
+				c,
+				http.StatusUnauthorized,
+				apierrors.UnauthorizedError,
+			)
+		}
+	}
+
+	model := models.NewUserModel(sh.db)
+	ur, err := model.FindByID(context.Background(), userID)
+	if err != nil {
+		return apierrors.CustomError(c,
+			http.StatusNotFound,
+			apierrors.NotFoundError,
+		)
+	}
+
 	objectID, err := model.UpdateOne(
 		context.Background(),
-		user.ID,
+		userID,
 		bson.D{
 			{Key: "first_name", Value: req.FirstName},
 			{Key: "last_name", Value: req.LastName},
