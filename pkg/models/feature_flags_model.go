@@ -42,7 +42,6 @@ type Rule struct {
 
 type Revision struct {
 	UserID       primitive.ObjectID `json:"user_id" bson:"user_id"`
-	Version      int                `json:"version" bson:"version"`
 	Status       RevisionStatus     `json:"status" bson:"status"`
 	DefaultValue string             `json:"default_value" bson:"default_value"`
 	Rules        []Rule
@@ -61,6 +60,7 @@ type FeatureFlagRecord struct {
 	ID        primitive.ObjectID `json:"_id,omitempty" bson:"_id"`
 	OrgID     primitive.ObjectID `json:"org_id" bson:"org_id"`
 	UserID    primitive.ObjectID `json:"user_id" bson:"user_id"`
+	Version   int                `json:"version" bson:"version"`
 	Type      FlagType           `json:"type" bson:"type"`
 	Revisions []Revision
 	storage.Timestamps
@@ -72,18 +72,23 @@ type FeatureFlagRequest struct {
 	Rules        []Rule
 }
 
-func (ffm *FeatureFlagModel) NewFeatureFlagRecord(
+type RevisionRequest struct {
+	DefaultValue string `json:"default_value"`
+	Rules        []Rule
+}
+
+func NewFeatureFlagRecord(
 	req *FeatureFlagRequest,
 	orgID, userID primitive.ObjectID,
-) (*FeatureFlagRecord, error) {
+) *FeatureFlagRecord {
 	return &FeatureFlagRecord{
-		OrgID:  orgID,
-		UserID: userID,
-		Type:   req.Type,
+		OrgID:   orgID,
+		UserID:  userID,
+		Version: 1,
+		Type:    req.Type,
 		Revisions: []Revision{
 			{
 				UserID:       userID,
-				Version:      1,
 				Status:       Draft,
 				DefaultValue: req.DefaultValue,
 				Rules:        req.Rules,
@@ -93,7 +98,16 @@ func (ffm *FeatureFlagModel) NewFeatureFlagRecord(
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpadtedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},
-	}, nil
+	}
+}
+
+func (ffm *FeatureFlagModel) NewRevisionRecord(req *RevisionRequest, userID primitive.ObjectID) *Revision {
+	return &Revision{
+		UserID:       userID,
+		Status:       Draft,
+		DefaultValue: req.DefaultValue,
+		Rules:        req.Rules,
+	}
 }
 
 func (ffm *FeatureFlagModel) InsertOne(ctx context.Context, rec *FeatureFlagRecord) (primitive.ObjectID, error) {
@@ -118,4 +132,19 @@ func (ffm *FeatureFlagModel) FindByID(ctx context.Context, id primitive.ObjectID
 		return nil, err
 	}
 	return record, nil
+}
+
+func (ffm *FeatureFlagModel) UpdateOne(
+	ctx context.Context,
+	id primitive.ObjectID,
+	newValues bson.M,
+) (primitive.ObjectID, error) {
+	filter := bson.D{{Key: "_id", Value: id}}
+	update := bson.D{{Key: "$push", Value: newValues}}
+	_, err := ffm.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return primitive.ObjectID{}, err
+	}
+
+	return id, nil
 }
