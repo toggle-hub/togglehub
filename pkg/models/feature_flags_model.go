@@ -136,7 +136,10 @@ func (ffm *FeatureFlagModel) FindByID(ctx context.Context, id primitive.ObjectID
 
 var EmptyFeatureRecordList = []FeatureFlagRecord{}
 
-func (ffm *FeatureFlagModel) FindMany(ctx context.Context, organizationID primitive.ObjectID) ([]FeatureFlagRecord, error) {
+func (ffm *FeatureFlagModel) FindMany(
+	ctx context.Context,
+	organizationID primitive.ObjectID,
+) ([]FeatureFlagRecord, error) {
 	records := make([]FeatureFlagRecord, 0)
 	cursor, err := ffm.collection.Find(ctx, bson.D{{Key: "organization_id", Value: organizationID}})
 	if err != nil {

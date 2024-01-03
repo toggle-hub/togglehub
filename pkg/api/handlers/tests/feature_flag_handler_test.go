@@ -41,7 +41,10 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 
 	h := handlers.NewFeatureFlagHandler(suite.db)
 	suite.Server.POST("organization/:organizationID/feature-flag", middlewares.AuthMiddleware(h.PostFeatureFlag))
-	suite.Server.PATCH("organization/:organizationID/feature-flag/:featureFlagID", middlewares.AuthMiddleware(h.PatchFeatureFlag))
+	suite.Server.PATCH(
+		"organization/:organizationID/feature-flag/:featureFlagID",
+		middlewares.AuthMiddleware(h.PatchFeatureFlag),
+	)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) AfterTest(_, _ string) {
