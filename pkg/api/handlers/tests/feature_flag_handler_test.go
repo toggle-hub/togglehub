@@ -40,6 +40,7 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 
 	h := handlers.NewFeatureFlagHandler(suite.db)
 	suite.Server.POST("organization/:orgID/featureFlag", middlewares.AuthMiddleware(h.PostFeatureFlag))
+	suite.Server.POST("organization/:orgID/featureFlag/:ffID", middlewares.AuthMiddleware(h.PostRevision))
 }
 
 func (suite *FeatureFlagHandlerTestSuite) AfterTest(_, _ string) {
@@ -56,7 +57,7 @@ func (suite *FeatureFlagHandlerTestSuite) TearDownSuite() {
 	suite.Server.Close()
 }
 
-func (suite *FeatureFlagHandlerTestSuite) TestSignUpHandlerSuccess() {
+func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	t := suite.T()
 
 	rule := models.Rule{
@@ -112,6 +113,97 @@ func (suite *FeatureFlagHandlerTestSuite) TestSignUpHandlerSuccess() {
 	assert.Equal(t, rule.Value, responseRule.Value)
 	assert.Equal(t, rule.Env, responseRule.Env)
 	assert.Equal(t, rule.IsEnabled, responseRule.IsEnabled)
+}
+
+func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
+	t := suite.T()
+	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", suite.db)
+	assert.NoError(t, err)
+
+	r := models.Rule{
+		Predicate: "attr: rule",
+		Value:     "false",
+		Env:       "dev",
+		IsEnabled: true,
+	}
+	ff := &models.FeatureFlagRequest{
+		Type:         models.Boolean,
+		DefaultValue: "false",
+		Rules: []models.Rule{
+			r,
+		},
+	}
+	ffr := models.NewFeatureFlagRecord(ff, orgID, userID)
+	ffm := models.NewFeatureFlagModel(suite.db)
+	ffID, err := ffm.InsertOne(context.Background(), ffr)
+	assert.NoError(t, err)
+
+	nr := models.Rule{
+		Predicate: "attr: newRule",
+		Value:     "true",
+		Env:       "prd",
+		IsEnabled: true,
+	}
+	rr := models.RevisionRequest{
+		DefaultValue: "true",
+		Rules: []models.Rule{
+			nr,
+		},
+	}
+	requestBody, err := json.Marshal(rr)
+	assert.NoError(t, err)
+
+	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/organization/"+orgID.Hex()+"/featureFlag/"+ffID.Hex(),
+		bytes.NewBuffer(requestBody),
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	rec := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(rec, req)
+
+	var jsonRes models.Revision
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
+	assert.Equal(t, userID, jsonRes.UserID)
+	assert.Equal(t, rr.DefaultValue, jsonRes.DefaultValue)
+	assert.Equal(t, models.Draft, jsonRes.Status)
+
+	savedFF, err := ffm.FindByID(context.Background(), ffID)
+	assert.NoError(t, err)
+
+	savedRevisions := savedFF.Revisions
+	assert.Equal(t, len(savedRevisions), 2)
+
+	//Make sure original revision is the same
+	originalR := savedRevisions[0]
+	assert.Equal(t, userID, originalR.UserID)
+	assert.Equal(t, ff.DefaultValue, originalR.DefaultValue)
+	assert.Equal(t, models.Draft, originalR.Status)
+	assert.NotEmpty(t, originalR.Rules)
+	originalRule := originalR.Rules[0]
+	assert.Equal(t, r.Predicate, originalRule.Predicate)
+	assert.Equal(t, r.Value, originalRule.Value)
+	assert.Equal(t, r.Env, originalRule.Env)
+	assert.Equal(t, r.IsEnabled, originalRule.IsEnabled)
+
+	//Check the new revision
+	newRevision := savedRevisions[1]
+	assert.Equal(t, userID, newRevision.UserID)
+	assert.Equal(t, rr.DefaultValue, newRevision.DefaultValue)
+	assert.Equal(t, models.Draft, newRevision.Status)
+	assert.NotEmpty(t, newRevision.Rules)
+	newRule := newRevision.Rules[0]
+	assert.Equal(t, nr.Predicate, newRule.Predicate)
+	assert.Equal(t, nr.Value, newRule.Value)
+	assert.Equal(t, nr.Env, newRule.Env)
+	assert.Equal(t, nr.IsEnabled, newRule.IsEnabled)
 }
 
 func TestFeatureFlagHandlerTestSuite(t *testing.T) {

@@ -63,4 +63,5 @@ func registerRoutes(app *App) {
 
 	featureFlagHandler := handlers.NewFeatureFlagHandler(app.storage.DB())
 	organizationGroup.POST("/:orgID/featureFlag", featureFlagHandler.PostFeatureFlag)
+	organizationGroup.POST("/:orgID/featureFlag/:ffID", featureFlagHandler.PostRevision)
 }
