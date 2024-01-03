@@ -45,6 +45,23 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
+	permisson, err := userHasPermission(userID, orgID, models.Collaborator, ffh.db)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+	if !permisson {
+		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusUnauthorized,
+			apierrors.UnauthorizedError,
+		)
+	}
+
 	req := new(models.FeatureFlagRequest)
 	if err := c.Bind(req); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
@@ -100,7 +117,7 @@ func (ffh *FeatureFlagHandler) PostRevision(c echo.Context) error {
 		)
 	}
 	if !permisson {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
 		return apierrors.CustomError(
 			c,
 			http.StatusUnauthorized,

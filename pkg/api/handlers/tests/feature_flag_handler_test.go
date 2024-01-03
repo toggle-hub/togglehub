@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
@@ -76,7 +77,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	requestBody, err := json.Marshal(ffr)
 	assert.NoError(t, err)
 
-	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", suite.db)
+	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
 	assert.NoError(t, err)
 
 	token, err := apiutils.CreateJWT(userID, time.Second*120)
@@ -115,9 +116,39 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	assert.Equal(t, rule.IsEnabled, responseRule.IsEnabled)
 }
 
+func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
+	t := suite.T()
+
+	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", models.ReadOnly, suite.db)
+	assert.NoError(t, err)
+
+	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/organization/"+orgID.Hex()+"/featureFlag",
+		nil,
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	rec := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(rec, req)
+
+	var jsonRes apierrors.Error
+
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Equal(t, jsonRes, apierrors.Error{
+		Error:   http.StatusText(http.StatusUnauthorized),
+		Message: apierrors.UnauthorizedError,
+	})
+}
+
 func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 	t := suite.T()
-	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", suite.db)
+	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
 	assert.NoError(t, err)
 
 	r := models.Rule{
@@ -206,11 +237,44 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 	assert.Equal(t, nr.IsEnabled, newRule.IsEnabled)
 }
 
+func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionUnauthorized() {
+	t := suite.T()
+
+	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", models.ReadOnly, suite.db)
+	assert.NoError(t, err)
+
+	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/organization/"+orgID.Hex()+"/featureFlag/"+primitive.NewObjectID().Hex(),
+		nil,
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	rec := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(rec, req)
+
+	var jsonRes apierrors.Error
+
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Equal(t, jsonRes, apierrors.Error{
+		Error:   http.StatusText(http.StatusUnauthorized),
+		Message: apierrors.UnauthorizedError,
+	})
+}
+
 func TestFeatureFlagHandlerTestSuite(t *testing.T) {
 	suite.Run(t, new(FeatureFlagHandlerTestSuite))
 }
 
-func setupUserAndOrg(email, orgName string, db *mongo.Database) (primitive.ObjectID, primitive.ObjectID, error) {
+func setupUserAndOrg(
+	email, orgName string,
+	permission models.PermissionLevelEnum,
+	db *mongo.Database) (primitive.ObjectID, primitive.ObjectID, error) {
 	uModel := models.NewUserModel(db)
 	userRecord, err := models.NewUserRecord(email, "default", "fizi", "valores")
 	if err != nil {
@@ -225,6 +289,12 @@ func setupUserAndOrg(email, orgName string, db *mongo.Database) (primitive.Objec
 
 	oModel := models.NewOrganizationModel(db)
 	orgRecord := models.NewOrganizationRecord(orgName, userRecord)
+	orgRecord.Members = []models.OrganizationMember{
+		models.OrganizationMember{
+			User:            *userRecord,
+			PermissionLevel: permission,
+		},
+	}
 	orgID, err := oModel.InsertOne(context.Background(), orgRecord)
 	if err != nil {
 		return primitive.NewObjectID(), primitive.NewObjectID(), err
