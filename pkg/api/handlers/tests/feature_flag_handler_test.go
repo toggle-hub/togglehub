@@ -213,6 +213,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 	assert.Equal(t, len(savedRevisions), 2)
 
 	//Make sure original revision is the same
+
 	originalRevision := savedRevisions[0]
 	assert.Equal(t, userID, originalRevision.UserID)
 	assert.Equal(t, ff.DefaultValue, originalRevision.DefaultValue)
@@ -225,6 +226,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 	assert.Equal(t, r.IsEnabled, originalRule.IsEnabled)
 
 	//Check the new revision
+
 	newRevision := savedRevisions[1]
 	assert.Equal(t, userID, newRevision.UserID)
 	assert.Equal(t, rr.DefaultValue, newRevision.DefaultValue)
@@ -274,7 +276,8 @@ func TestFeatureFlagHandlerTestSuite(t *testing.T) {
 func setupUserAndOrg(
 	email, orgName string,
 	permission models.PermissionLevelEnum,
-	db *mongo.Database) (primitive.ObjectID, primitive.ObjectID, error) {
+	db *mongo.Database,
+) (primitive.ObjectID, primitive.ObjectID, error) {
 	uModel := models.NewUserModel(db)
 	userRecord, err := models.NewUserRecord(email, "default", "fizi", "valores")
 	if err != nil {
@@ -290,7 +293,7 @@ func setupUserAndOrg(
 	oModel := models.NewOrganizationModel(db)
 	orgRecord := models.NewOrganizationRecord(orgName, userRecord)
 	orgRecord.Members = []models.OrganizationMember{
-		models.OrganizationMember{
+		{
 			User:            *userRecord,
 			PermissionLevel: permission,
 		},

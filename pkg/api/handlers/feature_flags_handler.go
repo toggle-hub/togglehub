@@ -45,7 +45,8 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	permisson, err := userHasPermission(userID, orgID, models.Collaborator, ffh.db)
+	om := models.NewOrganizationModel(ffh.db)
+	or, err := om.FindByID(context.Background(), orgID)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
@@ -53,7 +54,16 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 			apierrors.InternalServerError,
 		)
 	}
-	if !permisson {
+
+	permission, err := userHasPermission(userID, or, models.Collaborator)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+	if !permission {
 		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
 		return apierrors.CustomError(
 			c,
@@ -108,7 +118,8 @@ func (ffh *FeatureFlagHandler) PostRevision(c echo.Context) error {
 		)
 	}
 
-	permisson, err := userHasPermission(userID, orgID, models.Collaborator, ffh.db)
+	om := models.NewOrganizationModel(ffh.db)
+	or, err := om.FindByID(context.Background(), orgID)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
@@ -116,7 +127,16 @@ func (ffh *FeatureFlagHandler) PostRevision(c echo.Context) error {
 			apierrors.InternalServerError,
 		)
 	}
-	if !permisson {
+
+	permission, err := userHasPermission(userID, or, models.Collaborator)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+	if !permission {
 		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
 		return apierrors.CustomError(
 			c,
@@ -148,24 +168,30 @@ func (ffh *FeatureFlagHandler) PostRevision(c echo.Context) error {
 	model := models.NewFeatureFlagModel(ffh.db)
 
 	rev := model.NewRevisionRecord(req, userID)
-	model.UpdateOne(
+	_, err = model.UpdateOne(
 		context.Background(),
 		ffID,
 		bson.M{
 			"revisions": rev,
 		},
 	)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
 
 	return c.JSON(http.StatusOK, rev)
 }
 
-func userHasPermission(userID, orgID primitive.ObjectID, permission models.PermissionLevelEnum, db *mongo.Database) (bool, error) {
-	om := models.NewOrganizationModel(db)
-	or, err := om.FindByID(context.Background(), orgID)
-	if err != nil {
-		return false, err
-	}
-	for _, m := range or.Members {
+func userHasPermission(
+	userID primitive.ObjectID,
+	org *models.OrganizationRecord,
+	permission models.PermissionLevelEnum,
+) (bool, error) {
+	for _, m := range org.Members {
 		if m.User.ID == userID {
 			switch permission {
 			case models.Admin:
@@ -173,7 +199,9 @@ func userHasPermission(userID, orgID primitive.ObjectID, permission models.Permi
 			case models.Collaborator:
 				return m.PermissionLevel == permission || m.PermissionLevel == models.Admin, nil
 			case models.ReadOnly:
-				return m.PermissionLevel == permission || m.PermissionLevel == models.Collaborator || m.PermissionLevel == models.Admin, nil
+				return m.PermissionLevel == permission ||
+					m.PermissionLevel == models.Collaborator ||
+					m.PermissionLevel == models.Admin, nil
 			}
 		}
 	}
