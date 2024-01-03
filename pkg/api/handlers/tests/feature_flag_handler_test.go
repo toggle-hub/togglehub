@@ -67,14 +67,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 		Env:       "prd",
 		IsEnabled: true,
 	}
-	ffr := models.FeatureFlagRequest{
+	featureFlagRequest := models.FeatureFlagRequest{
 		Type:         models.Boolean,
 		DefaultValue: "true",
 		Rules: []models.Rule{
 			rule,
 		},
 	}
-	requestBody, err := json.Marshal(ffr)
+	requestBody, err := json.Marshal(featureFlagRequest)
 	assert.NoError(t, err)
 
 	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
@@ -100,12 +100,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.Equal(t, userID, jsonRes.UserID)
 	assert.Equal(t, orgID, jsonRes.OrgID)
-	assert.Equal(t, ffr.Type, jsonRes.Type)
+	assert.Equal(t, featureFlagRequest.Type, jsonRes.Type)
 
 	assert.NotEmpty(t, jsonRes.Revisions)
 	responseRevision := jsonRes.Revisions[0]
 	assert.Equal(t, userID, responseRevision.UserID)
-	assert.Equal(t, ffr.DefaultValue, responseRevision.DefaultValue)
+	assert.Equal(t, featureFlagRequest.DefaultValue, responseRevision.DefaultValue)
 	assert.Equal(t, models.Draft, responseRevision.Status)
 
 	assert.NotEmpty(t, responseRevision.Rules)
@@ -151,37 +151,37 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
 	assert.NoError(t, err)
 
-	r := models.Rule{
+	rule := models.Rule{
 		Predicate: "attr: rule",
 		Value:     "false",
 		Env:       "dev",
 		IsEnabled: true,
 	}
-	ff := &models.FeatureFlagRequest{
+	featureFlagRequest := &models.FeatureFlagRequest{
 		Type:         models.Boolean,
 		DefaultValue: "false",
 		Rules: []models.Rule{
-			r,
+			rule,
 		},
 	}
-	ffr := models.NewFeatureFlagRecord(ff, orgID, userID)
-	ffm := models.NewFeatureFlagModel(suite.db)
-	ffID, err := ffm.InsertOne(context.Background(), ffr)
+	featureFlagRecord := models.NewFeatureFlagRecord(featureFlagRequest, orgID, userID)
+	featureFlagModel := models.NewFeatureFlagModel(suite.db)
+	featureFlagID, err := featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
 	assert.NoError(t, err)
 
-	nr := models.Rule{
+	newRule := models.Rule{
 		Predicate: "attr: newRule",
 		Value:     "true",
 		Env:       "prd",
 		IsEnabled: true,
 	}
-	rr := models.RevisionRequest{
+	revisionRule := models.RevisionRequest{
 		DefaultValue: "true",
 		Rules: []models.Rule{
-			nr,
+			newRule,
 		},
 	}
-	requestBody, err := json.Marshal(rr)
+	requestBody, err := json.Marshal(revisionRule)
 	assert.NoError(t, err)
 
 	token, err := apiutils.CreateJWT(userID, time.Second*120)
@@ -189,7 +189,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 
 	req := httptest.NewRequest(
 		http.MethodPost,
-		"/organization/"+orgID.Hex()+"/featureFlag/"+ffID.Hex(),
+		"/organization/"+orgID.Hex()+"/featureFlag/"+featureFlagID.Hex(),
 		bytes.NewBuffer(requestBody),
 	)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -203,10 +203,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
 	assert.Equal(t, userID, jsonRes.UserID)
-	assert.Equal(t, rr.DefaultValue, jsonRes.DefaultValue)
+	assert.Equal(t, revisionRule.DefaultValue, jsonRes.DefaultValue)
 	assert.Equal(t, models.Draft, jsonRes.Status)
 
-	savedFF, err := ffm.FindByID(context.Background(), ffID)
+	savedFF, err := featureFlagModel.FindByID(context.Background(), featureFlagID)
 	assert.NoError(t, err)
 
 	savedRevisions := savedFF.Revisions
@@ -216,27 +216,27 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 
 	originalRevision := savedRevisions[0]
 	assert.Equal(t, userID, originalRevision.UserID)
-	assert.Equal(t, ff.DefaultValue, originalRevision.DefaultValue)
+	assert.Equal(t, featureFlagRequest.DefaultValue, originalRevision.DefaultValue)
 	assert.Equal(t, models.Draft, originalRevision.Status)
 	assert.NotEmpty(t, originalRevision.Rules)
 	originalRule := originalRevision.Rules[0]
-	assert.Equal(t, r.Predicate, originalRule.Predicate)
-	assert.Equal(t, r.Value, originalRule.Value)
-	assert.Equal(t, r.Env, originalRule.Env)
-	assert.Equal(t, r.IsEnabled, originalRule.IsEnabled)
+	assert.Equal(t, rule.Predicate, originalRule.Predicate)
+	assert.Equal(t, rule.Value, originalRule.Value)
+	assert.Equal(t, rule.Env, originalRule.Env)
+	assert.Equal(t, rule.IsEnabled, originalRule.IsEnabled)
 
 	// Check the new revision
 
-	newRevision := savedRevisions[1]
-	assert.Equal(t, userID, newRevision.UserID)
-	assert.Equal(t, rr.DefaultValue, newRevision.DefaultValue)
-	assert.Equal(t, models.Draft, newRevision.Status)
-	assert.NotEmpty(t, newRevision.Rules)
-	newRule := newRevision.Rules[0]
-	assert.Equal(t, nr.Predicate, newRule.Predicate)
-	assert.Equal(t, nr.Value, newRule.Value)
-	assert.Equal(t, nr.Env, newRule.Env)
-	assert.Equal(t, nr.IsEnabled, newRule.IsEnabled)
+	newSavedRevision := savedRevisions[1]
+	assert.Equal(t, userID, newSavedRevision.UserID)
+	assert.Equal(t, revisionRule.DefaultValue, newSavedRevision.DefaultValue)
+	assert.Equal(t, models.Draft, newSavedRevision.Status)
+	assert.NotEmpty(t, newSavedRevision.Rules)
+	newSavedRule := newSavedRevision.Rules[0]
+	assert.Equal(t, newRule.Predicate, newSavedRule.Predicate)
+	assert.Equal(t, newRule.Value, newSavedRule.Value)
+	assert.Equal(t, newRule.Env, newSavedRule.Env)
+	assert.Equal(t, newRule.IsEnabled, newSavedRule.IsEnabled)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionUnauthorized() {
@@ -290,7 +290,7 @@ func setupUserAndOrg(
 	}
 	userRecord.ID = userID
 
-	oModel := models.NewOrganizationModel(db)
+	orgModel := models.NewOrganizationModel(db)
 	orgRecord := models.NewOrganizationRecord(orgName, userRecord)
 	orgRecord.Members = []models.OrganizationMember{
 		{
@@ -298,7 +298,7 @@ func setupUserAndOrg(
 			PermissionLevel: permission,
 		},
 	}
-	orgID, err := oModel.InsertOne(context.Background(), orgRecord)
+	orgID, err := orgModel.InsertOne(context.Background(), orgRecord)
 	if err != nil {
 		return primitive.NewObjectID(), primitive.NewObjectID(), err
 	}

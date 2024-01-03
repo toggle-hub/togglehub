@@ -45,8 +45,8 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	om := models.NewOrganizationModel(ffh.db)
-	or, err := om.FindByID(context.Background(), orgID)
+	orgModel := models.NewOrganizationModel(ffh.db)
+	orgRecord, err := orgModel.FindByID(context.Background(), orgID)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
@@ -55,7 +55,7 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	permission := userHasPermission(userID, or, models.Collaborator)
+	permission := userHasPermission(userID, orgRecord, models.Collaborator)
 	if !permission {
 		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
 		return apierrors.CustomError(
@@ -75,9 +75,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	model := models.NewFeatureFlagModel(ffh.db)
-	ffr := models.NewFeatureFlagRecord(req, orgID, userID)
-	newRecID, err := model.InsertOne(context.Background(), ffr)
+	featureFlagModel := models.NewFeatureFlagModel(ffh.db)
+	featureFlagRecord := models.NewFeatureFlagRecord(req, orgID, userID)
+	newRecID, err := featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
@@ -85,9 +85,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 			apierrors.InternalServerError,
 		)
 	}
-	ffr.ID = newRecID
+	featureFlagRecord.ID = newRecID
 
-	return c.JSON(http.StatusCreated, ffr)
+	return c.JSON(http.StatusCreated, featureFlagRecord)
 }
 
 func (ffh *FeatureFlagHandler) PostRevision(c echo.Context) error {
@@ -111,8 +111,8 @@ func (ffh *FeatureFlagHandler) PostRevision(c echo.Context) error {
 		)
 	}
 
-	om := models.NewOrganizationModel(ffh.db)
-	or, err := om.FindByID(context.Background(), orgID)
+	orgModel := models.NewOrganizationModel(ffh.db)
+	orgRecord, err := orgModel.FindByID(context.Background(), orgID)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
@@ -121,7 +121,7 @@ func (ffh *FeatureFlagHandler) PostRevision(c echo.Context) error {
 		)
 	}
 
-	permission := userHasPermission(userID, or, models.Collaborator)
+	permission := userHasPermission(userID, orgRecord, models.Collaborator)
 	if !permission {
 		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
 		return apierrors.CustomError(
@@ -174,20 +174,20 @@ func (ffh *FeatureFlagHandler) PostRevision(c echo.Context) error {
 
 func userHasPermission(
 	userID primitive.ObjectID,
-	org *models.OrganizationRecord,
+	orgRecord *models.OrganizationRecord,
 	permission models.PermissionLevelEnum,
 ) bool {
-	for _, m := range org.Members {
-		if m.User.ID == userID {
+	for _, member := range orgRecord.Members {
+		if member.User.ID == userID {
 			switch permission {
 			case models.Admin:
-				return m.PermissionLevel == permission
+				return member.PermissionLevel == permission
 			case models.Collaborator:
-				return m.PermissionLevel == permission || m.PermissionLevel == models.Admin
+				return member.PermissionLevel == permission || member.PermissionLevel == models.Admin
 			case models.ReadOnly:
-				return m.PermissionLevel == permission ||
-					m.PermissionLevel == models.Collaborator ||
-					m.PermissionLevel == models.Admin
+				return member.PermissionLevel == permission ||
+					member.PermissionLevel == models.Collaborator ||
+					member.PermissionLevel == models.Admin
 			}
 		}
 	}
