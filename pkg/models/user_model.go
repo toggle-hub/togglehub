@@ -45,15 +45,16 @@ func (um *UserModel) FindByEmail(ctx context.Context, email string) (*UserRecord
 }
 
 func (um *UserModel) InsertOne(ctx context.Context, record *UserRecord) (primitive.ObjectID, error) {
+	record.ID = primitive.NewObjectID()
 	result, err := um.collection.InsertOne(ctx, record)
 	if err != nil {
-		return primitive.ObjectID{}, err
+		return primitive.NilObjectID, err
 	}
 
 	objectID, ok := result.InsertedID.(primitive.ObjectID)
 
 	if !ok {
-		return primitive.ObjectID{}, errors.New("unable to assert type of objectID")
+		return primitive.NilObjectID, errors.New("unable to assert type of objectID")
 	}
 
 	return objectID, nil
@@ -91,13 +92,12 @@ func NewUserRecord(email, password, firstName, lastName string) (*UserRecord, er
 	}
 
 	return &UserRecord{
-		ID:        primitive.NewObjectID(),
 		Email:     email,
 		Password:  ep,
 		FirstName: firstName,
 		LastName:  lastName,
 		Timestamps: storage.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
-			UpadtedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
+			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		}}, nil
 }

@@ -61,9 +61,7 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 
 	requestBody := []byte(`{
 		"email": "fizi@gmail.com",
-		"password": "123123",
-		"first_name": "fizi",
-		"last_name": "valores"
+		"password": "123123123"
 	}`)
 
 	req := httptest.NewRequest(http.MethodPost, "/signup", bytes.NewBuffer(requestBody))
@@ -81,7 +79,7 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 	assert.Equal(t, jsonRes.Email, ur.Email)
 	assert.Equal(t, jsonRes.FirstName, ur.FirstName)
 	assert.Equal(t, jsonRes.LastName, ur.LastName)
-	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(ur.Password), []byte("123123")))
+	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(ur.Password), []byte("123123123")))
 }
 
 func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
@@ -91,9 +89,9 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 
 	r, err := models.NewUserRecord(
 		"fizi@gmail.com",
-		"123123",
-		"fizi",
-		"valores",
+		"123123123",
+		"",
+		"",
 	)
 
 	assert.NoError(t, err)

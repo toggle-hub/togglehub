@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/storage"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -35,18 +36,40 @@ func (om *OrganizationModel) FindByID(ctx context.Context, id primitive.ObjectID
 }
 
 func (om *OrganizationModel) InsertOne(ctx context.Context, record *OrganizationRecord) (primitive.ObjectID, error) {
+	record.ID = primitive.NewObjectID()
 	result, err := om.collection.InsertOne(ctx, record)
 	if err != nil {
-		return primitive.ObjectID{}, err
+		return primitive.NilObjectID, err
 	}
 
 	objectID, ok := result.InsertedID.(primitive.ObjectID)
 
 	if !ok {
-		return primitive.ObjectID{}, errors.New("unable to assert type of objectID")
+		return primitive.NilObjectID, errors.New("unable to assert type of objectID")
 	}
 
 	return objectID, nil
+}
+
+func (om *OrganizationModel) UserHasReadPermission(ctx context.Context, userID, organizationID primitive.ObjectID) error {
+	organization, err := om.FindByID(ctx, organizationID)
+	if err != nil {
+		return err
+	}
+
+	isMember := false
+	for _, member := range organization.Members {
+		if member.User.ID == userID {
+			isMember = true
+			break
+		}
+	}
+
+	if !isMember {
+		return apiutils.ErrReadPermissionDenied
+	}
+
+	return nil
 }
 
 type PermissionLevelEnum = string
@@ -86,7 +109,6 @@ type OrganizationRecord struct {
 
 func NewOrganizationRecord(name string, admin *UserRecord) *OrganizationRecord {
 	return &OrganizationRecord{
-		ID:   primitive.NewObjectID(),
 		Name: name,
 		Members: []OrganizationMember{
 			{
@@ -96,7 +118,7 @@ func NewOrganizationRecord(name string, admin *UserRecord) *OrganizationRecord {
 		},
 		Timestamps: storage.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
-			UpadtedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
+			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},
 	}
 }

@@ -2,26 +2,29 @@ package middlewares
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type ContextUser struct {
-	ID primitive.ObjectID
-}
+var ErrMissingAuthHeader = errors.New("missing authorization header")
+var ErrInvalidSignMethod = errors.New("invalid signing method")
+var ErrInvalidToken = errors.New("invalid token")
 
 func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		authHeader := c.Request().Header.Get("Authorization")
 
 		if authHeader == "" {
+			log.Println(apiutils.HandlerErrorLogMessage(ErrMissingAuthHeader, c))
 			return c.JSON(http.StatusUnauthorized, apierrors.Error{
-				Error:   "Missing Authorization header",
+				Error:   "missing Authorization header",
 				Message: http.StatusText(http.StatusUnauthorized),
 			})
 		}
@@ -31,14 +34,16 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			secretKey := []byte("your-secret-key")
 
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, errors.New("invalid signing method")
+				log.Println(apiutils.HandlerErrorLogMessage(ErrInvalidSignMethod, c))
+				return nil, ErrInvalidSignMethod
 			}
 			return secretKey, nil
 		})
 
 		if err != nil {
+			log.Println(apiutils.HandlerErrorLogMessage(err, c))
 			return c.JSON(http.StatusUnauthorized, apierrors.Error{
-				Error:   "Invalid token",
+				Error:   ErrInvalidToken.Error(),
 				Message: http.StatusText(http.StatusUnauthorized),
 			})
 		}
@@ -47,20 +52,22 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			sub, _ := claims["sub"].(string)
 			userID, err := primitive.ObjectIDFromHex(sub)
 			if err != nil {
+				log.Println(apiutils.HandlerErrorLogMessage(err, c))
 				return c.JSON(http.StatusUnauthorized, apierrors.Error{
-					Error:   "Invalid token sub",
+					Error:   "invalid token sub",
 					Message: http.StatusText(http.StatusUnauthorized),
 				})
 			}
 
-			c.Set("user", ContextUser{
+			c.Set("user", apiutils.ContextUser{
 				ID: userID,
 			})
 			return next(c)
 		}
 
+		log.Println(apiutils.HandlerErrorLogMessage(ErrInvalidToken, c))
 		return c.JSON(http.StatusUnauthorized, apierrors.Error{
-			Error:   "Invalid token",
+			Error:   ErrInvalidToken.Error(),
 			Message: http.StatusText(http.StatusUnauthorized),
 		})
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -26,13 +27,23 @@ func NewSignUpHandler(db *mongo.Database) *SignUpHandler {
 }
 
 type SignUpRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"gte=8"`
 }
 
 func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	req := new(SignUpRequest)
 	if err := c.Bind(req); err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(c,
+			http.StatusBadRequest,
+			apierrors.BadRequestError,
+		)
+	}
+
+	validate := validator.New()
+
+	if err := validate.Struct(req); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
 			http.StatusBadRequest,

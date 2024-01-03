@@ -40,8 +40,8 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 	suite.Server = echo.New()
 
 	h := handlers.NewFeatureFlagHandler(suite.db)
-	suite.Server.POST("organization/:orgID/featureFlag", middlewares.AuthMiddleware(h.PostFeatureFlag))
-	suite.Server.POST("organization/:orgID/featureFlag/:ffID", middlewares.AuthMiddleware(h.PostRevision))
+	suite.Server.POST("organization/:organizationID/feature-flag", middlewares.AuthMiddleware(h.PostFeatureFlag))
+	suite.Server.PATCH("organization/:organizationID/feature-flag/:featureFlagID", middlewares.AuthMiddleware(h.PatchFeatureFlag))
 }
 
 func (suite *FeatureFlagHandlerTestSuite) AfterTest(_, _ string) {
@@ -67,7 +67,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 		Env:       "prd",
 		IsEnabled: true,
 	}
-	featureFlagRequest := models.FeatureFlagRequest{
+	featureFlagRequest := handlers.FeatureFlagRequest{
 		Type:         models.Boolean,
 		DefaultValue: "true",
 		Rules: []models.Rule{
@@ -77,7 +77,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	requestBody, err := json.Marshal(featureFlagRequest)
 	assert.NoError(t, err)
 
-	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
+	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
 	assert.NoError(t, err)
 
 	token, err := apiutils.CreateJWT(userID, time.Second*120)
@@ -85,7 +85,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 
 	req := httptest.NewRequest(
 		http.MethodPost,
-		"/organization/"+orgID.Hex()+"/featureFlag",
+		"/organization/"+organizationID.Hex()+"/feature-flag",
 		bytes.NewBuffer(requestBody),
 	)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -99,7 +99,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.Equal(t, userID, jsonRes.UserID)
-	assert.Equal(t, orgID, jsonRes.OrgID)
+	assert.Equal(t, organizationID, jsonRes.OrganizationID)
 	assert.Equal(t, featureFlagRequest.Type, jsonRes.Type)
 
 	assert.NotEmpty(t, jsonRes.Revisions)
@@ -119,7 +119,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 	t := suite.T()
 
-	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", models.ReadOnly, suite.db)
+	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.ReadOnly, suite.db)
 	assert.NoError(t, err)
 
 	token, err := apiutils.CreateJWT(userID, time.Second*120)
@@ -127,7 +127,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 
 	req := httptest.NewRequest(
 		http.MethodPost,
-		"/organization/"+orgID.Hex()+"/featureFlag",
+		"/organization/"+organizationID.Hex()+"/feature-flag",
 		nil,
 	)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -148,7 +148,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 
 func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 	t := suite.T()
-	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
+	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
 	assert.NoError(t, err)
 
 	rule := models.Rule{
@@ -157,14 +157,21 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 		Env:       "dev",
 		IsEnabled: true,
 	}
-	featureFlagRequest := &models.FeatureFlagRequest{
+	featureFlagRequest := &handlers.FeatureFlagRequest{
 		Type:         models.Boolean,
 		DefaultValue: "false",
 		Rules: []models.Rule{
 			rule,
 		},
 	}
-	featureFlagRecord := models.NewFeatureFlagRecord(featureFlagRequest, orgID, userID)
+	featureFlagRecord := models.NewFeatureFlagRecord(
+		featureFlagRequest.Name,
+		featureFlagRequest.DefaultValue,
+		featureFlagRequest.Type,
+		featureFlagRequest.Rules,
+		organizationID,
+		userID,
+	)
 	featureFlagModel := models.NewFeatureFlagModel(suite.db)
 	featureFlagID, err := featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
 	assert.NoError(t, err)
@@ -188,8 +195,8 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(
-		http.MethodPost,
-		"/organization/"+orgID.Hex()+"/featureFlag/"+featureFlagID.Hex(),
+		http.MethodPatch,
+		"/organization/"+organizationID.Hex()+"/feature-flag/"+featureFlagID.Hex(),
 		bytes.NewBuffer(requestBody),
 	)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -242,15 +249,15 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionUnauthorized() {
 	t := suite.T()
 
-	userID, orgID, err := setupUserAndOrg("fizi@valores.com", "org", models.ReadOnly, suite.db)
+	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.ReadOnly, suite.db)
 	assert.NoError(t, err)
 
 	token, err := apiutils.CreateJWT(userID, time.Second*120)
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(
-		http.MethodPost,
-		"/organization/"+orgID.Hex()+"/featureFlag/"+primitive.NewObjectID().Hex(),
+		http.MethodPatch,
+		"/organization/"+organizationID.Hex()+"/feature-flag/"+primitive.NewObjectID().Hex(),
 		nil,
 	)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -278,30 +285,30 @@ func setupUserAndOrg(
 	permission models.PermissionLevelEnum,
 	db *mongo.Database,
 ) (primitive.ObjectID, primitive.ObjectID, error) {
-	uModel := models.NewUserModel(db)
+	userModel := models.NewUserModel(db)
 	userRecord, err := models.NewUserRecord(email, "default", "fizi", "valores")
 	if err != nil {
 		return primitive.NewObjectID(), primitive.NewObjectID(), err
 	}
 
-	userID, err := uModel.InsertOne(context.Background(), userRecord)
+	userID, err := userModel.InsertOne(context.Background(), userRecord)
 	if err != nil {
 		return primitive.NewObjectID(), primitive.NewObjectID(), err
 	}
 	userRecord.ID = userID
 
-	orgModel := models.NewOrganizationModel(db)
-	orgRecord := models.NewOrganizationRecord(orgName, userRecord)
-	orgRecord.Members = []models.OrganizationMember{
+	organizationModel := models.NewOrganizationModel(db)
+	organizationRecord := models.NewOrganizationRecord(orgName, userRecord)
+	organizationRecord.Members = []models.OrganizationMember{
 		{
 			User:            *userRecord,
 			PermissionLevel: permission,
 		},
 	}
-	orgID, err := orgModel.InsertOne(context.Background(), orgRecord)
+	organizationID, err := organizationModel.InsertOne(context.Background(), organizationRecord)
 	if err != nil {
 		return primitive.NewObjectID(), primitive.NewObjectID(), err
 	}
 
-	return userID, orgID, nil
+	return userID, organizationID, nil
 }

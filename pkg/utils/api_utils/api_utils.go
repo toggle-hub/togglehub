@@ -7,13 +7,16 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
 )
+
+type ContextUser struct {
+	ID primitive.ObjectID
+}
 
 type BaseHTTPClient interface {
 	Get(url string) (*http.Response, error)
@@ -70,6 +73,7 @@ func EncryptPassword(password string) (string, error) {
 
 var ErrNotAuthenticated = errors.New("user not authenticated")
 var ErrContextUserTypeAssertion = errors.New("unable to assert type of user in context")
+var ErrReadPermissionDenied = errors.New("user does not have read permission")
 
 func GetObjectIDFromContext(c echo.Context) (primitive.ObjectID, error) {
 	ctxUser := c.Get("user")
@@ -77,7 +81,7 @@ func GetObjectIDFromContext(c echo.Context) (primitive.ObjectID, error) {
 		return primitive.NilObjectID, ErrNotAuthenticated
 	}
 
-	user, ok := c.Get("user").(middlewares.ContextUser)
+	user, ok := c.Get("user").(ContextUser)
 
 	if !ok {
 		return primitive.NilObjectID, ErrContextUserTypeAssertion
