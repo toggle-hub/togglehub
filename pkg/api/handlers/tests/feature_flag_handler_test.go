@@ -182,12 +182,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 	assert.Equal(t, len(savedRevisions), 2)
 
 	//Make sure original revision is the same
-	originalR := savedRevisions[0]
-	assert.Equal(t, userID, originalR.UserID)
-	assert.Equal(t, ff.DefaultValue, originalR.DefaultValue)
-	assert.Equal(t, models.Draft, originalR.Status)
-	assert.NotEmpty(t, originalR.Rules)
-	originalRule := originalR.Rules[0]
+	originalRevision := savedRevisions[0]
+	assert.Equal(t, userID, originalRevision.UserID)
+	assert.Equal(t, ff.DefaultValue, originalRevision.DefaultValue)
+	assert.Equal(t, models.Draft, originalRevision.Status)
+	assert.NotEmpty(t, originalRevision.Rules)
+	originalRule := originalRevision.Rules[0]
 	assert.Equal(t, r.Predicate, originalRule.Predicate)
 	assert.Equal(t, r.Value, originalRule.Value)
 	assert.Equal(t, r.Env, originalRule.Env)

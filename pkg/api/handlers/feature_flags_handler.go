@@ -25,7 +25,6 @@ func NewFeatureFlagHandler(db *mongo.Database) *FeatureFlagHandler {
 }
 
 func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
-	log.Print("bbbbbbbbbbbbbbbbbbbbbb")
 	userID, err := apiutils.GetObjectIDFromContext(c)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
@@ -72,7 +71,6 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 }
 
 func (ffh *FeatureFlagHandler) PostRevision(c echo.Context) error {
-	log.Print("AAAAAAAAAAAAAAAAAAAAAAAAA")
 	userID, err := apiutils.GetObjectIDFromContext(c)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
