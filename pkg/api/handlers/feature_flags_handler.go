@@ -193,5 +193,4 @@ func userHasPermission(
 	}
 
 	return false
-
 }
