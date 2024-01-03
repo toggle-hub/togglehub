@@ -55,14 +55,7 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	permission, err := userHasPermission(userID, or, models.Collaborator)
-	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
-		return apierrors.CustomError(c,
-			http.StatusInternalServerError,
-			apierrors.InternalServerError,
-		)
-	}
+	permission := userHasPermission(userID, or, models.Collaborator)
 	if !permission {
 		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
 		return apierrors.CustomError(
@@ -128,14 +121,7 @@ func (ffh *FeatureFlagHandler) PostRevision(c echo.Context) error {
 		)
 	}
 
-	permission, err := userHasPermission(userID, or, models.Collaborator)
-	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
-		return apierrors.CustomError(c,
-			http.StatusInternalServerError,
-			apierrors.InternalServerError,
-		)
-	}
+	permission := userHasPermission(userID, or, models.Collaborator)
 	if !permission {
 		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
 		return apierrors.CustomError(
@@ -190,22 +176,22 @@ func userHasPermission(
 	userID primitive.ObjectID,
 	org *models.OrganizationRecord,
 	permission models.PermissionLevelEnum,
-) (bool, error) {
+) bool {
 	for _, m := range org.Members {
 		if m.User.ID == userID {
 			switch permission {
 			case models.Admin:
-				return m.PermissionLevel == permission, nil
+				return m.PermissionLevel == permission
 			case models.Collaborator:
-				return m.PermissionLevel == permission || m.PermissionLevel == models.Admin, nil
+				return m.PermissionLevel == permission || m.PermissionLevel == models.Admin
 			case models.ReadOnly:
 				return m.PermissionLevel == permission ||
 					m.PermissionLevel == models.Collaborator ||
-					m.PermissionLevel == models.Admin, nil
+					m.PermissionLevel == models.Admin
 			}
 		}
 	}
 
-	return false, nil
+	return false
 
 }

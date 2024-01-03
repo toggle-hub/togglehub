@@ -212,7 +212,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 	savedRevisions := savedFF.Revisions
 	assert.Equal(t, len(savedRevisions), 2)
 
-	//Make sure original revision is the same
+	// Make sure original revision is the same
 
 	originalRevision := savedRevisions[0]
 	assert.Equal(t, userID, originalRevision.UserID)
@@ -225,7 +225,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 	assert.Equal(t, r.Env, originalRule.Env)
 	assert.Equal(t, r.IsEnabled, originalRule.IsEnabled)
 
-	//Check the new revision
+	// Check the new revision
 
 	newRevision := savedRevisions[1]
 	assert.Equal(t, userID, newRevision.UserID)
