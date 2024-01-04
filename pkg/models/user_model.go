@@ -5,11 +5,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/storage"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const UserCollectionName = "user"
@@ -45,15 +46,16 @@ func (um *UserModel) FindByEmail(ctx context.Context, email string) (*UserRecord
 }
 
 func (um *UserModel) InsertOne(ctx context.Context, record *UserRecord) (primitive.ObjectID, error) {
+	record.ID = primitive.NewObjectID()
 	result, err := um.collection.InsertOne(ctx, record)
 	if err != nil {
-		return primitive.ObjectID{}, err
+		return primitive.NilObjectID, err
 	}
 
 	objectID, ok := result.InsertedID.(primitive.ObjectID)
 
 	if !ok {
-		return primitive.ObjectID{}, errors.New("unable to assert type of objectID")
+		return primitive.NilObjectID, errors.New("unable to assert type of objectID")
 	}
 
 	return objectID, nil
@@ -85,19 +87,27 @@ type UserRecord struct {
 }
 
 func NewUserRecord(email, password, firstName, lastName string) (*UserRecord, error) {
-	ep, err := apiutils.EncryptPassword(password)
+	ep, err := encryptPassword(password)
 	if err != nil {
 		return nil, err
 	}
 
 	return &UserRecord{
-		ID:        primitive.NewObjectID(),
 		Email:     email,
 		Password:  ep,
 		FirstName: firstName,
 		LastName:  lastName,
 		Timestamps: storage.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
-			UpadtedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
+			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		}}, nil
+}
+
+func encryptPassword(password string) (string, error) {
+	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), config.BCryptCost)
+	if err != nil {
+		return "", err
+	}
+
+	return string(encryptedPassword), nil
 }

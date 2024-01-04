@@ -35,15 +35,16 @@ func (om *OrganizationModel) FindByID(ctx context.Context, id primitive.ObjectID
 }
 
 func (om *OrganizationModel) InsertOne(ctx context.Context, record *OrganizationRecord) (primitive.ObjectID, error) {
+	record.ID = primitive.NewObjectID()
 	result, err := om.collection.InsertOne(ctx, record)
 	if err != nil {
-		return primitive.ObjectID{}, err
+		return primitive.NilObjectID, err
 	}
 
 	objectID, ok := result.InsertedID.(primitive.ObjectID)
 
 	if !ok {
-		return primitive.ObjectID{}, errors.New("unable to assert type of objectID")
+		return primitive.NilObjectID, errors.New("unable to assert type of objectID")
 	}
 
 	return objectID, nil
@@ -86,7 +87,6 @@ type OrganizationRecord struct {
 
 func NewOrganizationRecord(name string, admin *UserRecord) *OrganizationRecord {
 	return &OrganizationRecord{
-		ID:   primitive.NewObjectID(),
 		Name: name,
 		Members: []OrganizationMember{
 			{
@@ -96,7 +96,7 @@ func NewOrganizationRecord(name string, admin *UserRecord) *OrganizationRecord {
 		},
 		Timestamps: storage.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
-			UpadtedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
+			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},
 	}
 }

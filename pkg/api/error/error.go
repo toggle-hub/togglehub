@@ -14,6 +14,7 @@ const (
 	EmailConflictError  ErrorMessage = "email already in use"
 	UnauthorizedError   ErrorMessage = "user lacks valid authentication credentials"
 	BadRequestError     ErrorMessage = "malformed request"
+	ForbiddenError      ErrorMessage = "forbidden action"
 )
 
 type Error struct {

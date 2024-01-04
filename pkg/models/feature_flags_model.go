@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const FeatureFlagCollectionName = "feature_flag"
@@ -34,10 +35,10 @@ const (
 )
 
 type Rule struct {
-	Predicate string `json:"predicate" bson:"predicate"`
-	Value     string `json:"value" bson:"value"`
-	Env       string `json:"env" bson:"env"`
-	IsEnabled bool   `json:"is_enabled" bson:"is_enabled"`
+	Predicate string `json:"predicate" bson:"predicate" validate:"required"`
+	Value     string `json:"value" bson:"value" validate:"required"`
+	Env       string `json:"env" bson:"env" validate:"required"`
+	IsEnabled bool   `json:"is_enabled" bson:"is_enabled" validate:"required,boolean"`
 }
 
 type Revision struct {
@@ -57,68 +58,62 @@ const (
 )
 
 type FeatureFlagRecord struct {
-	ID        primitive.ObjectID `json:"_id,omitempty" bson:"_id"`
-	OrgID     primitive.ObjectID `json:"org_id" bson:"org_id"`
-	UserID    primitive.ObjectID `json:"user_id" bson:"user_id"`
-	Version   int                `json:"version" bson:"version"`
-	Type      FlagType           `json:"type" bson:"type"`
-	Revisions []Revision
+	ID             primitive.ObjectID `json:"_id,omitempty" bson:"_id"`
+	OrganizationID primitive.ObjectID `json:"organization_id" bson:"organization_id"`
+	UserID         primitive.ObjectID `json:"user_id" bson:"user_id"`
+	Version        int                `json:"version" bson:"version"`
+	Name           string             `json:"name" bson:"name"`
+	Type           FlagType           `json:"type" bson:"type"`
+	Revisions      []Revision         `json:"revisions" bson:"revisions"`
 	storage.Timestamps
 }
 
-type FeatureFlagRequest struct {
-	Type         FlagType `json:"type" `
-	DefaultValue string   `json:"default_value"`
-	Rules        []Rule
-}
-
-type RevisionRequest struct {
-	DefaultValue string `json:"default_value"`
-	Rules        []Rule
-}
-
 func NewFeatureFlagRecord(
-	req *FeatureFlagRequest,
-	orgID, userID primitive.ObjectID,
+	name,
+	defaultValue string,
+	flagType FlagType,
+	rules []Rule,
+	organizationID,
+	userID primitive.ObjectID,
 ) *FeatureFlagRecord {
 	return &FeatureFlagRecord{
-		OrgID:   orgID,
-		UserID:  userID,
-		Version: 1,
-		Type:    req.Type,
+		OrganizationID: organizationID,
+		UserID:         userID,
+		Version:        1,
+		Name:           name,
+		Type:           flagType,
 		Revisions: []Revision{
 			{
 				UserID:       userID,
 				Status:       Draft,
-				DefaultValue: req.DefaultValue,
-				Rules:        req.Rules,
+				DefaultValue: defaultValue,
+				Rules:        rules,
 			},
 		},
 		Timestamps: storage.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
-			UpadtedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
+			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},
 	}
 }
 
-func (ffm *FeatureFlagModel) NewRevisionRecord(req *RevisionRequest, userID primitive.ObjectID) *Revision {
+func (ffm *FeatureFlagModel) NewRevisionRecord(defaultValue string, rules []Rule, userID primitive.ObjectID) *Revision {
 	return &Revision{
 		UserID:       userID,
 		Status:       Draft,
-		DefaultValue: req.DefaultValue,
-		Rules:        req.Rules,
+		DefaultValue: defaultValue,
+		Rules:        rules,
 	}
 }
 
-func (ffm *FeatureFlagModel) InsertOne(ctx context.Context, rec *FeatureFlagRecord) (primitive.ObjectID, error) {
-	rec.ID = primitive.NewObjectID()
-	result, err := ffm.collection.InsertOne(ctx, rec)
+func (ffm *FeatureFlagModel) InsertOne(ctx context.Context, record *FeatureFlagRecord) (primitive.ObjectID, error) {
+	record.ID = primitive.NewObjectID()
+	result, err := ffm.collection.InsertOne(ctx, record)
 	if err != nil {
 		return primitive.NilObjectID, err
 	}
 
 	objectID, ok := result.InsertedID.(primitive.ObjectID)
-
 	if !ok {
 		return primitive.NilObjectID, errors.New("unable to assert type of objectID")
 	}
@@ -132,6 +127,37 @@ func (ffm *FeatureFlagModel) FindByID(ctx context.Context, id primitive.ObjectID
 		return nil, err
 	}
 	return record, nil
+}
+
+var EmptyFeatureRecordList = []FeatureFlagRecord{}
+
+func (ffm *FeatureFlagModel) FindMany(
+	ctx context.Context,
+	organizationID primitive.ObjectID,
+	page,
+	limit int,
+) ([]FeatureFlagRecord, error) {
+	findOptions := options.Find()
+	findOptions.SetSkip(int64((page - 1) * limit))
+	findOptions.SetLimit(int64(limit))
+
+	records := make([]FeatureFlagRecord, 0)
+	cursor, err := ffm.collection.Find(ctx, bson.D{{Key: "organization_id", Value: organizationID}}, findOptions)
+	if err != nil {
+		return EmptyFeatureRecordList, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		record := new(FeatureFlagRecord)
+		if err := cursor.Decode(record); err != nil {
+			return EmptyFeatureRecordList, err
+		}
+
+		records = append(records, *record)
+	}
+
+	return records, nil
 }
 
 func (ffm *FeatureFlagModel) UpdateOne(

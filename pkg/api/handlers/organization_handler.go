@@ -18,7 +18,7 @@ type OrganizationHandler struct {
 }
 
 type OrganizationPostRequest struct {
-	Name string
+	Name string `json:"name" validate:"required"`
 }
 
 func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {

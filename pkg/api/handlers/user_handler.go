@@ -26,8 +26,8 @@ func NewUserHandler(db *mongo.Database) *UserHandler {
 }
 
 type UserPatchRequest struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
+	FirstName string `json:"first_name" validate:"required"`
+	LastName  string `json:"last_name" validate:"required"`
 }
 
 type UserPatchResponse struct {

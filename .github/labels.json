@@ -1,0 +1,182 @@
+[
+  {
+    "name": "analytics 📈",
+    "description": "Analytics related changes.",
+    "color": "cedae6"
+  },
+  {
+    "name": "api 🖥️",
+    "description": "API related changes.",
+    "color": "f943f6"
+  },
+  {
+    "name": "auth 🛂",
+    "description": "Authentication/Authorization related changes.",
+    "color": "4dc6dc"
+  },
+  {
+    "name": "automation 🤖",
+    "description": "Automation related changes.",
+    "color": "fbca04"
+  },
+  {
+    "name": "blocked ✋",
+    "description": "Blocked changes.",
+    "color": "c07695"
+  },
+  {
+    "name": "breaking changes 💥",
+    "description": "Breaking changes.",
+    "color": "f94f28"
+  },
+  {
+    "name": "ci/cd 👷",
+    "description": "Changes related to CI/CD.",
+    "color": "64b5f6"
+  },
+  {
+    "name": "cloud ☁️",
+    "description": "Changes related to cloud platforms (AWS).",
+    "color": "004A5D"
+  },
+  {
+    "name": "code removal ⚰️",
+    "description": "Code or files removal.",
+    "color": "d9e3e8"
+  },
+  {
+    "name": "configuration 🔧",
+    "description": "Configuration related changes.",
+    "color": "ffc400"
+  },
+  {
+    "name": "contributors 👥",
+    "description": "Repository contributors.",
+    "color": "ffce49"
+  },
+  {
+    "name": "database 🗃️",
+    "description": "Database related changes.",
+    "color": "c5e763"
+  },
+  {
+    "name": "dependencies 📦️",
+    "description": "Dependencies related changes.",
+    "color": "39c2f1"
+  },
+  {
+    "name": "documentation 📝",
+    "description": "Documentation related changes.",
+    "color": "00e676"
+  },
+  {
+    "name": "dx 🧑‍💻",
+    "description": "Developer experience related changes.",
+    "color": "9c5fe2"
+  },
+  {
+    "name": "help wanted 🆘",
+    "description": "Extra attention is needed.",
+    "color": "008672"
+  },
+  {
+    "name": "hotfix 🚑️",
+    "description": "Critical hotfix.",
+    "color": "fb584a"
+  },
+  {
+    "name": "machine learning 🧠",
+    "description": "Machine Learning related changes.",
+    "color": "34AC8A"
+  },
+  {
+    "name": "mvp ✍️",
+    "description": "Minimum viable product related changes.",
+    "color": "F9D0C4"
+  },
+  {
+    "name": "non-critical issue 🩹",
+    "description": "Non-critical issue.",
+    "color": "fbcfb7"
+  },
+  {
+    "name": "notifications 📣",
+    "description": "Notifications related changes.",
+    "color": "e87179"
+  },
+  {
+    "name": "observability 🧐",
+    "description": "Observability related changes.",
+    "color": "BFA264"
+  },
+  {
+    "name": "performance ⚡️",
+    "description": "Performance related changes.",
+    "color": "40c4ff"
+  },
+  {
+    "name": "poc ⚗️",
+    "description": "Proof of concept and experiments.",
+    "color": "7f39fb"
+  },
+  {
+    "name": "question ❓",
+    "description": "Further information is requested",
+    "color": "d876e3"
+  },
+  {
+    "name": "refactor 🚚",
+    "description": "Code refactoring.",
+    "color": "77e856"
+  },
+  {
+    "name": "release 🚀",
+    "description": "New version release.",
+    "color": "80deea"
+  },
+  {
+    "name": "revert ⏪️",
+    "description": "Reverts changes.",
+    "color": "56d1d8"
+  },
+  {
+    "name": "rfc 📖",
+    "description": "Request for comments.",
+    "color": "ff4916"
+  },
+  {
+    "name": "scripts 🔨",
+    "description": "Scripts related changes.",
+    "color": "ffc400"
+  },
+  {
+    "name": "security 🔒️",
+    "description": "Security related changes.",
+    "color": "ffce49"
+  },
+  {
+    "name": "structure 🎨",
+    "description": "Code structure related changes.",
+    "color": "ff7281"
+  },
+  {
+    "name": "tests 🧪",
+    "description": "Tests related changes.",
+    "color": "77e856"
+  },
+  {
+    "name": "typo ✍️",
+    "description": "Typo related fixes.",
+    "color": "0052CC"
+  },
+  {
+    "name": "warnings 🚨",
+    "description": "Bundler, linter or other warnings.",
+    "color": "536dfe"
+  },
+  {
+    "name": "wontfix 🙅",
+    "description": "This will not be worked on.",
+    "color": "ffffff"
+  }
+]
