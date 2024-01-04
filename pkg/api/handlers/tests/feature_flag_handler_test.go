@@ -255,7 +255,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 	t := suite.T()
 
-	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.ReadOnly, suite.db)
+	userID, organizationID, err := setupUserAndOrg("notfizi@valores.com", "org", models.ReadOnly, suite.db)
 	assert.NoError(t, err)
 
 	token, err := apiutils.CreateJWT(userID, time.Second*120)
