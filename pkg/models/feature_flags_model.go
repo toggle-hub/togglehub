@@ -67,11 +67,6 @@ type FeatureFlagRecord struct {
 	storage.Timestamps
 }
 
-type RevisionRequest struct {
-	DefaultValue string `json:"default_value"`
-	Rules        []Rule
-}
-
 func NewFeatureFlagRecord(
 	name,
 	defaultValue string,
@@ -101,12 +96,12 @@ func NewFeatureFlagRecord(
 	}
 }
 
-func (ffm *FeatureFlagModel) NewRevisionRecord(req *RevisionRequest, userID primitive.ObjectID) *Revision {
+func (ffm *FeatureFlagModel) NewRevisionRecord(defaultValue string, rules []Rule, userID primitive.ObjectID) *Revision {
 	return &Revision{
 		UserID:       userID,
 		Status:       Draft,
-		DefaultValue: req.DefaultValue,
-		Rules:        req.Rules,
+		DefaultValue: defaultValue,
+		Rules:        rules,
 	}
 }
 

@@ -21,8 +21,8 @@ type SignInHandler struct {
 }
 
 type SignInRequest struct {
-	Email    string `json:"email" bson:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" bson:"email" validate:"email"`
+	Password string `json:"password" validate:"required"`
 }
 
 func (sh *SignInHandler) PostSignIn(c echo.Context) error {

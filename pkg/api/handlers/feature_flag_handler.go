@@ -27,11 +27,16 @@ func NewFeatureFlagHandler(db *mongo.Database) *FeatureFlagHandler {
 	}
 }
 
-type FeatureFlagRequest struct {
+type PostFeatureFlagRequest struct {
 	Name         string          `json:"name" validate:"required"`
 	Type         models.FlagType `json:"type" validate:"required,oneof=boolean json string number"`
 	DefaultValue string          `json:"default_value" validate:"required"`
 	Rules        []models.Rule   `json:"rules" validate:"dive,required"`
+}
+
+type PatchFeatureFlagRequest struct {
+	DefaultValue string        `json:"default_value"`
+	Rules        []models.Rule `json:"rules" validate:"dive,required"`
 }
 
 func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
@@ -129,7 +134,7 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	req := new(FeatureFlagRequest)
+	req := new(PostFeatureFlagRequest)
 	if err := c.Bind(req); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(
@@ -223,7 +228,7 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	req := new(models.RevisionRequest)
+	req := new(PatchFeatureFlagRequest)
 	if err := c.Bind(req); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(
@@ -235,7 +240,11 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 
 	model := models.NewFeatureFlagModel(ffh.db)
 
-	rev := model.NewRevisionRecord(req, userID)
+	rev := model.NewRevisionRecord(
+		req.DefaultValue,
+		req.Rules,
+		userID,
+	)
 	_, err = model.UpdateOne(
 		context.Background(),
 		featureFlagID,

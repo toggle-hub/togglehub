@@ -45,6 +45,7 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 		"organization/:organizationID/feature-flag/:featureFlagID",
 		middlewares.AuthMiddleware(h.PatchFeatureFlag),
 	)
+	suite.Server.GET("/organization/:organizationID/feature-flag", middlewares.AuthMiddleware(h.ListFeatureFlags))
 }
 
 func (suite *FeatureFlagHandlerTestSuite) AfterTest(_, _ string) {
@@ -70,7 +71,8 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 		Env:       "prd",
 		IsEnabled: true,
 	}
-	featureFlagRequest := handlers.FeatureFlagRequest{
+	featureFlagRequest := handlers.PostFeatureFlagRequest{
+		Name:         "cool feature",
 		Type:         models.Boolean,
 		DefaultValue: "true",
 		Rules: []models.Rule{
@@ -149,7 +151,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 	})
 }
 
-func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
+func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	t := suite.T()
 	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
 	assert.NoError(t, err)
@@ -160,7 +162,8 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 		Env:       "dev",
 		IsEnabled: true,
 	}
-	featureFlagRequest := &handlers.FeatureFlagRequest{
+	featureFlagRequest := &handlers.PostFeatureFlagRequest{
+		Name:         "cool feature",
 		Type:         models.Boolean,
 		DefaultValue: "false",
 		Rules: []models.Rule{
@@ -185,7 +188,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 		Env:       "prd",
 		IsEnabled: true,
 	}
-	revisionRule := models.RevisionRequest{
+	revisionRule := handlers.PatchFeatureFlagRequest{
 		DefaultValue: "true",
 		Rules: []models.Rule{
 			newRule,
@@ -249,7 +252,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionSuccess() {
 	assert.Equal(t, newRule.IsEnabled, newSavedRule.IsEnabled)
 }
 
-func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionUnauthorized() {
+func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 	t := suite.T()
 
 	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.ReadOnly, suite.db)
@@ -276,6 +279,43 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostRevisionUnauthorized() {
 	assert.Equal(t, jsonRes, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
 		Message: apierrors.UnauthorizedError,
+	})
+}
+
+func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
+	t := suite.T()
+
+	_, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
+	assert.NoError(t, err)
+
+	user, err := models.NewUserRecord("evildoear97@gmail.com", "trying_to_steal_info", "Evil", "Doer")
+	assert.NoError(t, err)
+
+	userModel := models.NewUserModel(suite.db)
+	userID, err := userModel.InsertOne(context.Background(), user)
+	assert.NoError(t, err)
+
+	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/organization/"+organizationID.Hex()+"/feature-flag",
+		nil,
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	rec := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(rec, req)
+
+	var jsonRes apierrors.Error
+
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Equal(t, jsonRes, apierrors.Error{
+		Error:   http.StatusText(http.StatusForbidden),
+		Message: apierrors.ForbiddenError,
 	})
 }
 
