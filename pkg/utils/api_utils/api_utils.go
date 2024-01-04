@@ -7,10 +7,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Roll-Play/togglelabs/pkg/config"
+	"github.com/Roll-Play/togglelabs/pkg/models"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
 )
 
@@ -62,15 +61,6 @@ func GetPaginationParams(page, limit string) (int, int) {
 	return pageNumber, limitNumber
 }
 
-func EncryptPassword(password string) (string, error) {
-	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), config.BCryptCost)
-	if err != nil {
-		return "", err
-	}
-
-	return string(encryptedPassword), nil
-}
-
 var ErrNotAuthenticated = errors.New("user not authenticated")
 var ErrContextUserTypeAssertion = errors.New("unable to assert type of user in context")
 var ErrReadPermissionDenied = errors.New("user does not have read permission")
@@ -108,4 +98,27 @@ func HandlerLogMessage(resource string, id primitive.ObjectID, c echo.Context) s
 		c.RealIP(),
 		c.Request().URL.Path,
 	)
+}
+
+func UserHasPermission(
+	userID primitive.ObjectID,
+	organization *models.OrganizationRecord,
+	permission models.PermissionLevelEnum,
+) bool {
+	for _, member := range organization.Members {
+		if member.User.ID == userID {
+			switch permission {
+			case models.Admin:
+				return member.PermissionLevel == permission
+			case models.Collaborator:
+				return member.PermissionLevel == permission || member.PermissionLevel == models.Admin
+			case models.ReadOnly:
+				return member.PermissionLevel == permission ||
+					member.PermissionLevel == models.Collaborator ||
+					member.PermissionLevel == models.Admin
+			}
+		}
+	}
+
+	return false
 }

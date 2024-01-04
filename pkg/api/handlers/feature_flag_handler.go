@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 
@@ -39,7 +38,19 @@ type PatchFeatureFlagRequest struct {
 	Rules        []models.Rule `json:"rules" validate:"dive,required"`
 }
 
+type ListFeatureFlagResponse struct {
+	Data     []models.FeatureFlagRecord `json:"data"`
+	Page     int                        `json:"page"`
+	PageSize int                        `json:"page_size"`
+	Total    int                        `json:"total"`
+}
+
 func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
+	pageQuery := c.QueryParam("page")
+	limitQuery := c.QueryParam("page_size")
+
+	page, limit := apiutils.GetPaginationParams(pageQuery, limitQuery)
+
 	userID, err := apiutils.GetObjectIDFromContext(c)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
@@ -60,25 +71,28 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 		)
 	}
 	organizationModel := models.NewOrganizationModel(ffh.db)
-	if err := organizationModel.UserHasReadPermission(context.Background(), userID, organizationID); err != nil {
-		if errors.Is(err, apiutils.ErrReadPermissionDenied) {
-			return apierrors.CustomError(
-				c,
-				http.StatusForbidden,
-				apierrors.ForbiddenError,
-			)
-		}
-
+	organization, err := organizationModel.FindByID(context.Background(), organizationID)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(
 			c,
-			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	permission := apiutils.UserHasPermission(userID, organization, models.ReadOnly)
+	if !permission {
+		return apierrors.CustomError(
+			c,
+			http.StatusForbidden,
+			apierrors.ForbiddenError,
 		)
 	}
 
 	model := models.NewFeatureFlagModel(ffh.db)
 
-	featureFlags, err := model.FindMany(context.Background(), organizationID)
+	featureFlags, err := model.FindMany(context.Background(), organizationID, page, limit)
 	if err != nil {
 		return apierrors.CustomError(
 			c,
@@ -90,7 +104,12 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 	bytes, _ := json.Marshal(featureFlags)
 
 	log.Println(apiutils.HandlerLogMessage(string(bytes), primitive.NewObjectID(), c))
-	return c.JSON(http.StatusOK, featureFlags)
+	return c.JSON(http.StatusOK, ListFeatureFlagResponse{
+		Data:     featureFlags,
+		Page:     page,
+		PageSize: limit,
+		Total:    len(featureFlags),
+	})
 }
 
 func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
@@ -124,7 +143,7 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	permission := userHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
 		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
 		return apierrors.CustomError(
@@ -208,7 +227,7 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	permission := userHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
 		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
 		return apierrors.CustomError(
@@ -261,27 +280,4 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, rev)
-}
-
-func userHasPermission(
-	userID primitive.ObjectID,
-	organization *models.OrganizationRecord,
-	permission models.PermissionLevelEnum,
-) bool {
-	for _, member := range organization.Members {
-		if member.User.ID == userID {
-			switch permission {
-			case models.Admin:
-				return member.PermissionLevel == permission
-			case models.Collaborator:
-				return member.PermissionLevel == permission || member.PermissionLevel == models.Admin
-			case models.ReadOnly:
-				return member.PermissionLevel == permission ||
-					member.PermissionLevel == models.Collaborator ||
-					member.PermissionLevel == models.Admin
-			}
-		}
-	}
-
-	return false
 }

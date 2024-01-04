@@ -282,6 +282,141 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 	})
 }
 
+func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
+	t := suite.T()
+
+	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
+	assert.NoError(t, err)
+
+	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	assert.NoError(t, err)
+
+	featureFlagModel := models.NewFeatureFlagModel(suite.db)
+
+	rule := models.Rule{
+		Predicate: "attr: rule",
+		Value:     "false",
+		Env:       "dev",
+		IsEnabled: true,
+	}
+
+	featureFlags := []*models.FeatureFlagRecord{
+		models.NewFeatureFlagRecord(
+			"cool feature",
+			"false",
+			models.Boolean,
+			[]models.Rule{rule},
+			organizationID,
+			userID,
+		),
+		models.NewFeatureFlagRecord(
+			"cool feature",
+			"false",
+			models.Boolean,
+			[]models.Rule{rule},
+			organizationID,
+			userID,
+		),
+	}
+
+	for _, featureFlag := range featureFlags {
+		_, err := featureFlagModel.InsertOne(context.Background(), featureFlag)
+		assert.NoError(t, err)
+	}
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/organization/"+organizationID.Hex()+"/feature-flag",
+		nil,
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	rec := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(rec, req)
+
+	var jsonRes handlers.ListFeatureFlagResponse
+
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, jsonRes, handlers.ListFeatureFlagResponse{
+		Data: []models.FeatureFlagRecord{
+			*featureFlags[0],
+			*featureFlags[1],
+		},
+		Page:     1,
+		PageSize: 10,
+		Total:    2,
+	})
+}
+
+func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
+	t := suite.T()
+
+	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
+	assert.NoError(t, err)
+
+	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	assert.NoError(t, err)
+
+	featureFlagModel := models.NewFeatureFlagModel(suite.db)
+
+	rule := models.Rule{
+		Predicate: "attr: rule",
+		Value:     "false",
+		Env:       "dev",
+		IsEnabled: true,
+	}
+
+	featureFlags := []*models.FeatureFlagRecord{
+		models.NewFeatureFlagRecord(
+			"cool feature",
+			"false",
+			models.Boolean,
+			[]models.Rule{rule},
+			organizationID,
+			userID,
+		),
+		models.NewFeatureFlagRecord(
+			"cool feature 2",
+			"false",
+			models.Boolean,
+			[]models.Rule{rule},
+			organizationID,
+			userID,
+		),
+	}
+
+	for _, featureFlag := range featureFlags {
+		_, err := featureFlagModel.InsertOne(context.Background(), featureFlag)
+		assert.NoError(t, err)
+	}
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/organization/"+organizationID.Hex()+"/feature-flag?page=1&page_size=1",
+		nil,
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	rec := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(rec, req)
+
+	var jsonRes handlers.ListFeatureFlagResponse
+
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, jsonRes, handlers.ListFeatureFlagResponse{
+		Data: []models.FeatureFlagRecord{
+			*featureFlags[0],
+		},
+		Page:     1,
+		PageSize: 1,
+		Total:    1,
+	})
+}
+
 func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 	t := suite.T()
 

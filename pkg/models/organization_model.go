@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/storage"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -49,31 +48,6 @@ func (om *OrganizationModel) InsertOne(ctx context.Context, record *Organization
 	}
 
 	return objectID, nil
-}
-
-func (om *OrganizationModel) UserHasReadPermission(
-	ctx context.Context,
-	userID,
-	organizationID primitive.ObjectID,
-) error {
-	organization, err := om.FindByID(ctx, organizationID)
-	if err != nil {
-		return err
-	}
-
-	isMember := false
-	for _, member := range organization.Members {
-		if member.User.ID == userID {
-			isMember = true
-			break
-		}
-	}
-
-	if !isMember {
-		return apiutils.ErrReadPermissionDenied
-	}
-
-	return nil
 }
 
 type PermissionLevelEnum = string
