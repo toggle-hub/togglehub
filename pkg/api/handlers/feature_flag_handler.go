@@ -259,7 +259,7 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 
 	model := models.NewFeatureFlagModel(ffh.db)
 
-	rev := model.NewRevisionRecord(
+	revision := model.NewRevisionRecord(
 		req.DefaultValue,
 		req.Rules,
 		userID,
@@ -268,7 +268,7 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		context.Background(),
 		featureFlagID,
 		bson.M{
-			"revisions": rev,
+			"revisions": revision,
 		},
 	)
 	if err != nil {
@@ -279,5 +279,5 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	return c.JSON(http.StatusOK, rev)
+	return c.JSON(http.StatusOK, revision)
 }
