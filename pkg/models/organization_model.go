@@ -51,7 +51,11 @@ func (om *OrganizationModel) InsertOne(ctx context.Context, record *Organization
 	return objectID, nil
 }
 
-func (om *OrganizationModel) UserHasReadPermission(ctx context.Context, userID, organizationID primitive.ObjectID) error {
+func (om *OrganizationModel) UserHasReadPermission(
+	ctx context.Context,
+	userID,
+	organizationID primitive.ObjectID,
+) error {
 	organization, err := om.FindByID(ctx, organizationID)
 	if err != nil {
 		return err
