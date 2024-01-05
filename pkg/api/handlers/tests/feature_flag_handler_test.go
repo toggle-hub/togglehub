@@ -166,15 +166,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	t := suite.T()
 
-	user := fixtures.CreateUser("", "", "fizi", "valores", suite.db)
-	organization := fixtures.CreateOrganization(
-		"the company",
-		[]common.Tuple[*models.UserRecord, string]{
-			common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
-				user,
-				models.Admin,
-			),
-		}, suite.db)
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+	}, suite.db)
 
 	rule := models.Rule{
 		Predicate: "attr: rule",
@@ -238,15 +236,11 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	assert.Equal(t, user.ID, response.UserID)
 	assert.Equal(t, revisionRule.DefaultValue, response.DefaultValue)
 	assert.Equal(t, models.Draft, response.Status)
-
-	savedFF, err := featureFlagModel.FindByID(context.Background(), featureFlagID)
+	savedFeatureFlag, err := featureFlagModel.FindByID(context.Background(), featureFlagID)
 	assert.NoError(t, err)
-
-	savedRevisions := savedFF.Revisions
+	savedRevisions := savedFeatureFlag.Revisions
 	assert.Equal(t, len(savedRevisions), 2)
-
 	// Make sure original revision is the same
-
 	originalRevision := savedRevisions[0]
 	assert.Equal(t, user.ID, originalRevision.UserID)
 	assert.Equal(t, featureFlagRequest.DefaultValue, originalRevision.DefaultValue)
@@ -257,9 +251,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	assert.Equal(t, rule.Value, originalRule.Value)
 	assert.Equal(t, rule.Env, originalRule.Env)
 	assert.Equal(t, rule.IsEnabled, originalRule.IsEnabled)
-
 	// Check the new revision
-
 	newSavedRevision := savedRevisions[1]
 	assert.Equal(t, user.ID, newSavedRevision.UserID)
 	assert.Equal(t, revisionRule.DefaultValue, newSavedRevision.DefaultValue)
