@@ -13,7 +13,11 @@ var organizationCounter = 0
 
 var EmptyMemberTupleList = []common.Tuple[*models.UserRecord, models.PermissionLevelEnum]{}
 
-func CreateOrganization(name string, users []common.Tuple[*models.UserRecord, models.PermissionLevelEnum], db *mongo.Database) *models.OrganizationRecord {
+func CreateOrganization(
+	name string,
+	users []common.Tuple[*models.UserRecord, models.PermissionLevelEnum],
+	db *mongo.Database,
+) *models.OrganizationRecord {
 	organizationCounter++
 	members := make([]models.OrganizationMember, 0)
 	if len(users) < 1 {
