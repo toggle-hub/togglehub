@@ -117,7 +117,7 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerNewUserSuccess() {
 
 	assert.Equal(t, http.StatusCreated, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, response.Email, ur.Email)
+	assert.Equal(t, ur.Email, response.Email)
 	assert.NotEmpty(t, response.Token)
 }
 
@@ -151,7 +151,7 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerExistingUserSuccess() {
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, response.Email, user.Email)
+	assert.Equal(t, user.Email, response.Email)
 	assert.NotEmpty(t, response.Token)
 }
 

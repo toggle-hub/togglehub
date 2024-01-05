@@ -77,9 +77,9 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 
 	assert.Equal(t, http.StatusCreated, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, response.Email, ur.Email)
-	assert.Equal(t, response.FirstName, ur.FirstName)
-	assert.Equal(t, response.LastName, ur.LastName)
+	assert.Equal(t, ur.Email, response.Email)
+	assert.Equal(t, ur.FirstName, response.FirstName)
+	assert.Equal(t, ur.LastName, response.LastName)
 	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(ur.Password), []byte("123123123")))
 }
 

@@ -72,10 +72,10 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerSuccess() {
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, response.ID, user.ID)
-	assert.Equal(t, response.Email, user.Email)
-	assert.Equal(t, response.FirstName, user.FirstName)
-	assert.Equal(t, response.LastName, user.LastName)
+	assert.Equal(t, user.ID, response.ID)
+	assert.Equal(t, user.Email, response.Email)
+	assert.Equal(t, user.FirstName, response.FirstName)
+	assert.Equal(t, user.LastName, response.LastName)
 }
 
 func (suite *SignInHandlerTestSuite) TestSignInHandlerNotFound() {
@@ -95,10 +95,10 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerNotFound() {
 
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, response, apierrors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusNotFound),
 		Message: apierrors.NotFoundError,
-	})
+	}, response)
 }
 
 func (suite *SignInHandlerTestSuite) TestSignInHandlerUnauthorized() {
@@ -120,10 +120,10 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerUnauthorized() {
 
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, response, apierrors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
 		Message: apierrors.UnauthorizedError,
-	})
+	}, response)
 }
 
 func TestSignInHandlerTestSuite(t *testing.T) {

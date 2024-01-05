@@ -116,10 +116,10 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
 
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, response, apierrors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusNotFound),
 		Message: apierrors.NotFoundError,
-	})
+	}, response)
 }
 
 func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields() {

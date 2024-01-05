@@ -365,7 +365,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.Equal(t, response, handlers.ListFeatureFlagResponse{
+	assert.Equal(t, handlers.ListFeatureFlagResponse{
 		Data: []models.FeatureFlagRecord{
 			*featureFlags[0],
 			*featureFlags[1],
@@ -373,7 +373,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 		Page:     1,
 		PageSize: 10,
 		Total:    2,
-	})
+	}, response)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
@@ -437,14 +437,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.Equal(t, response, handlers.ListFeatureFlagResponse{
+	assert.Equal(t, handlers.ListFeatureFlagResponse{
 		Data: []models.FeatureFlagRecord{
 			*featureFlags[0],
 		},
 		Page:     1,
 		PageSize: 1,
 		Total:    1,
-	})
+	}, response)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
@@ -482,10 +482,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, response, apierrors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
 		Message: apierrors.ForbiddenError,
-	})
+	}, response)
 }
 
 func TestFeatureFlagHandlerTestSuite(t *testing.T) {

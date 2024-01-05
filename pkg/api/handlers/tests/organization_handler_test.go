@@ -83,9 +83,9 @@ func (suite *OrganizationHandlerTestSuite) TestPostOrganizationHandlerSuccess() 
 
 	organization, err := model.FindByID(context.Background(), response.ID)
 	assert.NoError(t, err)
-	assert.Equal(t, response.ID, organization.ID)
-	assert.Equal(t, response.Members, organization.Members)
-	assert.Equal(t, response.Name, organization.Name)
+	assert.Equal(t, organization.ID, response.ID)
+	assert.Equal(t, organization.Members, response.Members)
+	assert.Equal(t, organization.Name, response.Name)
 }
 
 func TestOrganizationHandlerTestSuite(t *testing.T) {
