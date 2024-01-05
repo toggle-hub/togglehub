@@ -321,7 +321,6 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 			apierrors.BadRequestError,
 		)
 	}
-	log.Print(revisionID)
 
 	model := models.NewFeatureFlagModel(ffh.db)
 
