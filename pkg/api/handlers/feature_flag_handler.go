@@ -245,12 +245,10 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		req.Rules,
 		userID,
 	)
-	_, err = model.PushOne(
+	_, err = model.UpdateOne(
 		context.Background(),
-		featureFlagID,
-		bson.M{
-			"revisions": rev,
-		},
+		bson.D{{Key: "_id", Value: featureFlagID}},
+		bson.D{{Key: "$push", Value: bson.M{"revisions": rev}}},
 	)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
@@ -338,7 +336,7 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 	}
 
 	filters := bson.D{{Key: "_id", Value: featureFlagID}, {Key: "revisions.status", Value: "live"}}
-	newValues := bson.D{{Key: "revisions.$.status", Value: "draft"}}
+	newValues := bson.D{{Key: "$set", Value: bson.D{{Key: "revisions.$.status", Value: "draft"}}}}
 	_, err = model.UpdateOne(context.Background(), filters, newValues)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
@@ -349,7 +347,14 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 	}
 
 	filters = bson.D{{Key: "_id", Value: featureFlagID}, {Key: "revisions._id", Value: revisionID}}
-	newValues = bson.D{{Key: "version", Value: featureFlagRecord.Version + 1}, {Key: "revisions.$.status", Value: "live"}}
+	newValues = bson.D{
+		{
+			Key: "$set", Value: bson.D{
+				{Key: "version", Value: featureFlagRecord.Version + 1},
+				{Key: "revisions.$.status", Value: "live"},
+			},
+		},
+	}
 	_, err = model.UpdateOne(context.Background(), filters, newValues)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))

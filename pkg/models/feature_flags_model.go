@@ -157,27 +157,11 @@ func (ffm *FeatureFlagModel) FindMany(
 	return records, nil
 }
 
-func (ffm *FeatureFlagModel) PushOne(
-	ctx context.Context,
-	id primitive.ObjectID,
-	newValues bson.M,
-) (primitive.ObjectID, error) {
-	filter := bson.D{{Key: "_id", Value: id}}
-	update := bson.D{{Key: "$push", Value: newValues}}
-	_, err := ffm.collection.UpdateOne(ctx, filter, update)
-	if err != nil {
-		return primitive.ObjectID{}, err
-	}
-
-	return id, nil
-}
-
 func (ffm *FeatureFlagModel) UpdateOne(
 	ctx context.Context,
 	filters,
-	newValues bson.D,
+	update bson.D,
 ) (primitive.ObjectID, error) {
-	update := bson.D{{Key: "$set", Value: newValues}}
 	_, err := ffm.collection.UpdateOne(ctx, filters, update)
 	if err != nil {
 		return primitive.ObjectID{}, err
