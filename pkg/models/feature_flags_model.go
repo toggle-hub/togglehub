@@ -41,6 +41,7 @@ type Rule struct {
 }
 
 type Revision struct {
+	ID           primitive.ObjectID `json:"_id,omitempty" bson:"_id"`
 	UserID       primitive.ObjectID `json:"user_id" bson:"user_id"`
 	Status       RevisionStatus     `json:"status" bson:"status"`
 	DefaultValue string             `json:"default_value" bson:"default_value"`
@@ -83,6 +84,7 @@ func NewFeatureFlagRecord(
 		Type:           flagType,
 		Revisions: []Revision{
 			{
+				ID:           primitive.NewObjectID(),
 				UserID:       userID,
 				Status:       Draft,
 				DefaultValue: defaultValue,
@@ -96,8 +98,9 @@ func NewFeatureFlagRecord(
 	}
 }
 
-func (ffm *FeatureFlagModel) NewRevisionRecord(defaultValue string, rules []Rule, userID primitive.ObjectID) *Revision {
+func NewRevisionRecord(defaultValue string, rules []Rule, userID primitive.ObjectID) *Revision {
 	return &Revision{
+		ID:           primitive.NewObjectID(),
 		UserID:       userID,
 		Status:       Draft,
 		DefaultValue: defaultValue,
@@ -154,7 +157,7 @@ func (ffm *FeatureFlagModel) FindMany(
 	return records, nil
 }
 
-func (ffm *FeatureFlagModel) UpdateOne(
+func (ffm *FeatureFlagModel) PushOne(
 	ctx context.Context,
 	id primitive.ObjectID,
 	newValues bson.M,
@@ -167,4 +170,18 @@ func (ffm *FeatureFlagModel) UpdateOne(
 	}
 
 	return id, nil
+}
+
+func (ffm *FeatureFlagModel) UpdateOne(
+	ctx context.Context,
+	filters,
+	newValues bson.D,
+) (primitive.ObjectID, error) {
+	update := bson.D{{Key: "$set", Value: newValues}}
+	_, err := ffm.collection.UpdateOne(ctx, filters, update)
+	if err != nil {
+		return primitive.ObjectID{}, err
+	}
+
+	return primitive.NilObjectID, nil
 }

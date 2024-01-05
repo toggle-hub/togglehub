@@ -20,6 +20,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -46,6 +47,10 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 		middlewares.AuthMiddleware(h.PatchFeatureFlag),
 	)
 	suite.Server.GET("/organization/:organizationID/feature-flag", middlewares.AuthMiddleware(h.ListFeatureFlags))
+	suite.Server.PATCH(
+		"organization/:organizationID/feature-flag/:featureFlagID/revision/:revisionID",
+		middlewares.AuthMiddleware(h.ApproveRevision),
+	)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) AfterTest(_, _ string) {
@@ -145,10 +150,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	assert.Equal(t, jsonRes, apierrors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
 		Message: apierrors.UnauthorizedError,
-	})
+	}, jsonRes)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
@@ -276,10 +281,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	assert.Equal(t, jsonRes, apierrors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
 		Message: apierrors.UnauthorizedError,
-	})
+	}, jsonRes)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
@@ -313,10 +318,121 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
 	assert.Equal(t, http.StatusForbidden, rec.Code)
-	assert.Equal(t, jsonRes, apierrors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
 		Message: apierrors.ForbiddenError,
-	})
+	}, jsonRes)
+}
+
+func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
+	t := suite.T()
+	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
+	assert.NoError(t, err)
+
+	rule := models.Rule{
+		Predicate: "attr: rule",
+		Value:     "false",
+		Env:       "dev",
+		IsEnabled: true,
+	}
+	featureFlagRequest := &handlers.PostFeatureFlagRequest{
+		Name:         "cool feature",
+		Type:         models.Boolean,
+		DefaultValue: "false",
+		Rules: []models.Rule{
+			rule,
+		},
+	}
+	featureFlagRecord := models.NewFeatureFlagRecord(
+		featureFlagRequest.Name,
+		featureFlagRequest.DefaultValue,
+		featureFlagRequest.Type,
+		featureFlagRequest.Rules,
+		organizationID,
+		userID,
+	)
+	featureFlagRecord.Revisions[0].Status = models.Live
+	featureFlagModel := models.NewFeatureFlagModel(suite.db)
+	featureFlagID, err := featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
+
+	willBeLiveRevision := models.NewRevisionRecord("value", []models.Rule{rule}, userID)
+	willBeControlRevision := models.NewRevisionRecord("value", []models.Rule{rule}, userID)
+
+	_, err = featureFlagModel.PushOne(context.Background(), featureFlagID, bson.M{"revisions": willBeLiveRevision})
+	_, err = featureFlagModel.PushOne(context.Background(), featureFlagID, bson.M{"revisions": willBeControlRevision})
+
+	assert.NoError(t, err)
+
+	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(
+		http.MethodPatch,
+		"/organization/"+organizationID.Hex()+
+			"/feature-flag/"+featureFlagID.Hex()+
+			"/revision/"+willBeLiveRevision.ID.Hex(),
+		nil,
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	rec := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	savedFeatureFlag, err := featureFlagModel.FindByID(context.Background(), featureFlagID)
+	assert.NoError(t, err)
+
+	savedRevisions := savedFeatureFlag.Revisions
+	assert.Equal(t, len(savedRevisions), 3)
+	assert.Equal(t, savedFeatureFlag.Version, 2)
+
+	originalRevision := savedRevisions[0]
+	assert.Equal(t, models.Draft, originalRevision.Status)
+	updatedRevision := savedRevisions[1]
+	assert.Equal(t, models.Live, updatedRevision.Status)
+	controlRevision := savedRevisions[2]
+	assert.Equal(t, models.Draft, controlRevision.Status)
+}
+
+func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
+	t := suite.T()
+
+	_, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
+	assert.NoError(t, err)
+
+	user, err := models.NewUserRecord("evildoear97@gmail.com", "trying_to_steal_info", "Evil", "Doer")
+	assert.NoError(t, err)
+
+	userModel := models.NewUserModel(suite.db)
+	userID, err := userModel.InsertOne(context.Background(), user)
+	assert.NoError(t, err)
+
+	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(
+		http.MethodPatch,
+		"/organization/"+organizationID.Hex()+
+			"/feature-flag/"+primitive.NewObjectID().Hex()+
+			"/revision/"+primitive.NewObjectID().Hex(),
+		nil,
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	rec := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(rec, req)
+
+	var jsonRes apierrors.Error
+
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Equal(t, apierrors.Error{
+		Error:   http.StatusText(http.StatusUnauthorized),
+		Message: apierrors.UnauthorizedError,
+	}, jsonRes)
 }
 
 func TestFeatureFlagHandlerTestSuite(t *testing.T) {

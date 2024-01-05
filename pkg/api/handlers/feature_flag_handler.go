@@ -240,12 +240,12 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 
 	model := models.NewFeatureFlagModel(ffh.db)
 
-	rev := model.NewRevisionRecord(
+	rev := models.NewRevisionRecord(
 		req.DefaultValue,
 		req.Rules,
 		userID,
 	)
-	_, err = model.UpdateOne(
+	_, err = model.PushOne(
 		context.Background(),
 		featureFlagID,
 		bson.M{
@@ -261,6 +261,105 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, rev)
+}
+
+func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
+	userID, err := apiutils.GetObjectIDFromContext(c)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusUnauthorized,
+			apierrors.UnauthorizedError,
+		)
+	}
+
+	organizationID, err := primitive.ObjectIDFromHex(c.Param("organizationID"))
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusBadRequest,
+			apierrors.BadRequestError,
+		)
+	}
+
+	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	permission := userHasPermission(userID, organizationRecord, models.Collaborator)
+	if !permission {
+		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusUnauthorized,
+			apierrors.UnauthorizedError,
+		)
+	}
+
+	featureFlagID, err := primitive.ObjectIDFromHex(c.Param("featureFlagID"))
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusBadRequest,
+			apierrors.BadRequestError,
+		)
+	}
+
+	revisionID, err := primitive.ObjectIDFromHex(c.Param("revisionID"))
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusBadRequest,
+			apierrors.BadRequestError,
+		)
+	}
+	log.Print(revisionID)
+
+	model := models.NewFeatureFlagModel(ffh.db)
+
+	featureFlagRecord, err := model.FindByID(context.Background(), featureFlagID)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	filters := bson.D{{Key: "_id", Value: featureFlagID}, {Key: "revisions.status", Value: "live"}}
+	newValues := bson.D{{Key: "revisions.$.status", Value: "draft"}}
+	_, err = model.UpdateOne(context.Background(), filters, newValues)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	filters = bson.D{{Key: "_id", Value: featureFlagID}, {Key: "revisions._id", Value: revisionID}}
+	newValues = bson.D{{Key: "version", Value: featureFlagRecord.Version + 1}, {Key: "revisions.$.status", Value: "live"}}
+	_, err = model.UpdateOne(context.Background(), filters, newValues)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	return c.JSON(http.StatusOK, featureFlagID)
 }
 
 func userHasPermission(
