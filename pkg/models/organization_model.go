@@ -85,15 +85,10 @@ type OrganizationRecord struct {
 	storage.Timestamps
 }
 
-func NewOrganizationRecord(name string, admin *UserRecord) *OrganizationRecord {
+func NewOrganizationRecord(name string, members []OrganizationMember) *OrganizationRecord {
 	return &OrganizationRecord{
-		Name: name,
-		Members: []OrganizationMember{
-			{
-				User:            *admin,
-				PermissionLevel: Admin,
-			},
-		},
+		Name:    name,
+		Members: members,
 		Timestamps: storage.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),

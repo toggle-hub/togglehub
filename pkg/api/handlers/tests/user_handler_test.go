@@ -12,6 +12,7 @@ import (
 
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
@@ -62,16 +63,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 
 	model := models.NewUserModel(suite.db)
 
-	r, err := models.NewUserRecord(
-		"fizi@gmail.com",
-		"123123",
-		"",
-		"",
-	)
-	assert.NoError(t, err)
-
-	userID, err := model.InsertOne(context.Background(), r)
-	assert.NoError(t, err)
+	user := fixtures.CreateUser("fizi@gmail.com", "", "", "", suite.db)
 
 	patchInfo := handlers.UserPatchRequest{
 		FirstName: "fizi",
@@ -80,26 +72,26 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 	requestBody, err := json.Marshal(patchInfo)
 	assert.NoError(t, err)
 
-	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	rec := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
-	var jsonRes handlers.UserPatchResponse
+	suite.Server.ServeHTTP(recorder, request)
+	var response handlers.UserPatchResponse
 
 	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
 	assert.NoError(t, err)
 
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, ur.Email, jsonRes.Email)
-	assert.Equal(t, ur.FirstName, jsonRes.FirstName)
-	assert.Equal(t, ur.LastName, jsonRes.LastName)
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, ur.Email, response.Email)
+	assert.Equal(t, ur.FirstName, response.FirstName)
+	assert.Equal(t, ur.LastName, response.LastName)
 }
 
 func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
@@ -114,17 +106,17 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
 	token, err := apiutils.CreateJWT(primitive.NewObjectID(), time.Second*120)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	rec := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
-	var jsonRes apierrors.Error
+	suite.Server.ServeHTTP(recorder, request)
+	var response apierrors.Error
 
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, jsonRes, apierrors.Error{
+	assert.Equal(t, http.StatusNotFound, recorder.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, response, apierrors.Error{
 		Error:   http.StatusText(http.StatusNotFound),
 		Message: apierrors.NotFoundError,
 	})
@@ -134,16 +126,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields(
 	t := suite.T()
 	model := models.NewUserModel(suite.db)
 
-	r, err := models.NewUserRecord(
-		"fizi@gmail.com",
-		"123123",
-		"",
-		"",
-	)
-	assert.NoError(t, err)
-
-	userID, err := model.InsertOne(context.Background(), r)
-	assert.NoError(t, err)
+	user := fixtures.CreateUser("fizi@gmail.com", "", "", "", suite.db)
 
 	requestBody := []byte(
 		`{
@@ -152,26 +135,26 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields(
 			"email": "new@email.mail"
 		}`)
 
-	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
-	req := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
 
-	rec := httptest.NewRecorder()
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
+	suite.Server.ServeHTTP(recorder, request)
 
-	var jsonRes handlers.UserPatchResponse
+	var response handlers.UserPatchResponse
 
 	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
 	assert.NoError(t, err)
 
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, ur.Email, jsonRes.Email)
-	assert.Equal(t, ur.FirstName, jsonRes.FirstName)
-	assert.Equal(t, ur.LastName, jsonRes.LastName)
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, ur.Email, response.Email)
+	assert.Equal(t, ur.FirstName, response.FirstName)
+	assert.Equal(t, ur.LastName, response.LastName)
 }
 
 func TestUserHandlerTestSuite(t *testing.T) {

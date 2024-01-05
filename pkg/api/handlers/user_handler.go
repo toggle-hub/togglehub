@@ -38,8 +38,8 @@ type UserPatchResponse struct {
 }
 
 func (sh *UserHandler) PatchUser(c echo.Context) error {
-	req := new(UserPatchRequest)
-	if err := c.Bind(req); err != nil {
+	request := new(UserPatchRequest)
+	if err := c.Bind(request); err != nil {
 		return apierrors.CustomError(c,
 			http.StatusBadRequest,
 			apierrors.BadRequestError,
@@ -72,8 +72,8 @@ func (sh *UserHandler) PatchUser(c echo.Context) error {
 		context.Background(),
 		userID,
 		bson.D{
-			{Key: "first_name", Value: req.FirstName},
-			{Key: "last_name", Value: req.LastName},
+			{Key: "first_name", Value: request.FirstName},
+			{Key: "last_name", Value: request.LastName},
 		},
 	)
 
@@ -87,7 +87,7 @@ func (sh *UserHandler) PatchUser(c echo.Context) error {
 	return c.JSON(http.StatusOK, UserPatchResponse{
 		ID:        objectID,
 		Email:     ur.Email,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
+		FirstName: request.FirstName,
+		LastName:  request.LastName,
 	})
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/config"
-	"github.com/Roll-Play/togglelabs/pkg/models"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -56,41 +56,26 @@ func (suite *SignInHandlerTestSuite) TearDownSuite() {
 func (suite *SignInHandlerTestSuite) TestSignInHandlerSuccess() {
 	t := suite.T()
 
-	model := models.NewUserModel(suite.db)
-
-	r, err := models.NewUserRecord(
-		"fizi@gmail.com",
-		"123123",
-		"fizi",
-		"valores",
-	)
-	assert.NoError(t, err)
-
-	_, err = model.InsertOne(context.Background(), r)
-
-	assert.NoError(t, err)
+	user := fixtures.CreateUser("fizi@gmail.com", "", "", "", suite.db)
 
 	requestBody := []byte(`{
 		"email": "fizi@gmail.com",
-		"password": "123123"
+		"password": "big_secret_password"
 	}`)
 
-	req := httptest.NewRequest(http.MethodPost, "/signin", bytes.NewBuffer(requestBody))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/signin", bytes.NewBuffer(requestBody))
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
-	var jsonRes common.AuthResponse
+	suite.Server.ServeHTTP(recorder, request)
+	var response common.AuthResponse
 
-	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
-	assert.NoError(t, err)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, jsonRes.ID, ur.ID)
-	assert.Equal(t, jsonRes.Email, ur.Email)
-	assert.Equal(t, jsonRes.FirstName, ur.FirstName)
-	assert.Equal(t, jsonRes.LastName, ur.LastName)
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, response.ID, user.ID)
+	assert.Equal(t, response.Email, user.Email)
+	assert.Equal(t, response.FirstName, user.FirstName)
+	assert.Equal(t, response.LastName, user.LastName)
 }
 
 func (suite *SignInHandlerTestSuite) TestSignInHandlerNotFound() {
@@ -98,19 +83,19 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerNotFound() {
 
 	requestBody := []byte(`{
 		"email": "fizi@gmail.com",
-		"password": "123123"
+		"password": "123123123"
 	}`)
 
-	req := httptest.NewRequest(http.MethodPost, "/signin", bytes.NewBuffer(requestBody))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/signin", bytes.NewBuffer(requestBody))
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
-	var jsonRes apierrors.Error
+	suite.Server.ServeHTTP(recorder, request)
+	var response apierrors.Error
 
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, jsonRes, apierrors.Error{
+	assert.Equal(t, http.StatusNotFound, recorder.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, response, apierrors.Error{
 		Error:   http.StatusText(http.StatusNotFound),
 		Message: apierrors.NotFoundError,
 	})
@@ -119,35 +104,23 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerNotFound() {
 func (suite *SignInHandlerTestSuite) TestSignInHandlerUnauthorized() {
 	t := suite.T()
 
-	model := models.NewUserModel(suite.db)
-
-	r, err := models.NewUserRecord(
-		"fizi@gmail.com",
-		"123123",
-		"fizi",
-		"valores",
-	)
-	assert.NoError(t, err)
-
-	_, err = model.InsertOne(context.Background(), r)
-
-	assert.NoError(t, err)
+	fixtures.CreateUser("fizi@gmail.com", "123123123", "fizi", "valores", suite.db)
 
 	requestBody := []byte(`{
 		"email": "fizi@gmail.com",
 		"password": "wrongpass"
 	}`)
 
-	req := httptest.NewRequest(http.MethodPost, "/signin", bytes.NewBuffer(requestBody))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/signin", bytes.NewBuffer(requestBody))
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
-	var jsonRes apierrors.Error
+	suite.Server.ServeHTTP(recorder, request)
+	var response apierrors.Error
 
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, jsonRes, apierrors.Error{
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, response, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
 		Message: apierrors.UnauthorizedError,
 	})

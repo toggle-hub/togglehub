@@ -22,8 +22,8 @@ type OrganizationPostRequest struct {
 }
 
 func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
-	req := new(OrganizationPostRequest)
-	if err := c.Bind(req); err != nil {
+	request := new(OrganizationPostRequest)
+	if err := c.Bind(request); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
@@ -62,7 +62,10 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 
 	user.Password = ""
 
-	organization := models.NewOrganizationRecord(req.Name, user)
+	organization := models.NewOrganizationRecord(request.Name, []models.OrganizationMember{{
+		User:            *user,
+		PermissionLevel: models.Admin,
+	}})
 
 	model := models.NewOrganizationModel(oh.db)
 
