@@ -11,6 +11,7 @@ import (
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/joho/godotenv"
@@ -94,18 +95,18 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerNewUserSuccess() {
 		},
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/callback", nil)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	urlq := req.URL.Query()
+	request := httptest.NewRequest(http.MethodGet, "/callback", nil)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	recorder := httptest.NewRecorder()
+	urlq := request.URL.Query()
 	urlq.Add("state", "random-string")
 	urlq.Add("code", "code")
-	req.URL.RawQuery = urlq.Encode()
+	request.URL.RawQuery = urlq.Encode()
 
 	h := handlers.NewSsoHandlerForTest(suite.db, &MockHTTPClient{}, mockOAuthClient)
 	suite.Server.GET("/callback", h.Callback)
-	suite.Server.ServeHTTP(rec, req)
-	var jsonRes common.AuthResponse
+	suite.Server.ServeHTTP(recorder, request)
+	var response common.AuthResponse
 
 	var ur models.UserRecord
 	assert.NoError(t, collection.FindOne(context.Background(),
@@ -114,15 +115,15 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerNewUserSuccess() {
 			Value: "test@test.com",
 		}}).Decode(&ur))
 
-	assert.Equal(t, http.StatusCreated, rec.Code)
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, jsonRes.Email, ur.Email)
-	assert.NotEmpty(t, jsonRes.Token)
+	assert.Equal(t, http.StatusCreated, recorder.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, ur.Email, response.Email)
+	assert.NotEmpty(t, response.Token)
 }
 
 func (suite *SignUpHandlerTestSuite) TestSSoHandlerExistingUserSuccess() {
 	t := suite.T()
-	model := models.NewUserModel(suite.db)
+
 	mockOAuthClient := &MockOAuthClient{
 		ExchangeFunc: func(ctc context.Context, code string) (*oauth2.Token, error) {
 			return &oauth2.Token{
@@ -133,34 +134,25 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerExistingUserSuccess() {
 		},
 	}
 
-	r, err := models.NewUserRecord(
-		"test@test.com",
-		"123123",
-		"fizi",
-		"valores",
-	)
-	assert.NoError(t, err)
+	user := fixtures.CreateUser("test@test.com", "", "", "", suite.db)
 
-	_, err = model.InsertOne(context.Background(), r)
-	assert.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodGet, "/callback", nil)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	urlq := req.URL.Query()
+	request := httptest.NewRequest(http.MethodGet, "/callback", nil)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	recorder := httptest.NewRecorder()
+	urlq := request.URL.Query()
 	urlq.Add("state", "random-string")
 	urlq.Add("code", "code")
-	req.URL.RawQuery = urlq.Encode()
+	request.URL.RawQuery = urlq.Encode()
 
 	h := handlers.NewSsoHandlerForTest(suite.db, &MockHTTPClient{}, mockOAuthClient)
 	suite.Server.GET("/callback", h.Callback)
-	suite.Server.ServeHTTP(rec, req)
-	var jsonRes common.AuthResponse
+	suite.Server.ServeHTTP(recorder, request)
+	var response common.AuthResponse
 
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, jsonRes.Email, r.Email)
-	assert.NotEmpty(t, jsonRes.Token)
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, user.Email, response.Email)
+	assert.NotEmpty(t, response.Token)
 }
 
 func TestSsoHandler(t *testing.T) {

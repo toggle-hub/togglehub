@@ -10,8 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
@@ -82,34 +84,39 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	requestBody, err := json.Marshal(featureFlagRequest)
 	assert.NoError(t, err)
 
-	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+	}, suite.db)
+
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
-	token, err := apiutils.CreateJWT(userID, time.Second*120)
-	assert.NoError(t, err)
-
-	req := httptest.NewRequest(
+	request := httptest.NewRequest(
 		http.MethodPost,
-		"/organization/"+organizationID.Hex()+"/feature-flag",
+		"/organization/"+organization.ID.Hex()+"/feature-flag",
 		bytes.NewBuffer(requestBody),
 	)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	rec := httptest.NewRecorder()
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
+	suite.Server.ServeHTTP(recorder, request)
 
-	var jsonRes models.FeatureFlagRecord
+	var response models.FeatureFlagRecord
 
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, http.StatusCreated, rec.Code)
-	assert.Equal(t, userID, jsonRes.UserID)
-	assert.Equal(t, organizationID, jsonRes.OrganizationID)
-	assert.Equal(t, featureFlagRequest.Type, jsonRes.Type)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusCreated, recorder.Code)
+	assert.Equal(t, user.ID, response.UserID)
+	assert.Equal(t, organization.ID, response.OrganizationID)
+	assert.Equal(t, featureFlagRequest.Type, response.Type)
 
-	assert.NotEmpty(t, jsonRes.Revisions)
-	responseRevision := jsonRes.Revisions[0]
-	assert.Equal(t, userID, responseRevision.UserID)
+	assert.NotEmpty(t, response.Revisions)
+	responseRevision := response.Revisions[0]
+	assert.Equal(t, user.ID, responseRevision.UserID)
 	assert.Equal(t, featureFlagRequest.DefaultValue, responseRevision.DefaultValue)
 	assert.Equal(t, models.Draft, responseRevision.Status)
 
@@ -124,28 +131,33 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 	t := suite.T()
 
-	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.ReadOnly, suite.db)
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.ReadOnly,
+		),
+	}, suite.db)
+
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
-	token, err := apiutils.CreateJWT(userID, time.Second*120)
-	assert.NoError(t, err)
-
-	req := httptest.NewRequest(
+	request := httptest.NewRequest(
 		http.MethodPost,
-		"/organization/"+organizationID.Hex()+"/feature-flag",
+		"/organization/"+organization.ID.Hex()+"/feature-flag",
 		nil,
 	)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	rec := httptest.NewRecorder()
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
+	suite.Server.ServeHTTP(recorder, request)
 
-	var jsonRes apierrors.Error
+	var response apierrors.Error
 
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	assert.Equal(t, jsonRes, apierrors.Error{
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+	assert.Equal(t, response, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
 		Message: apierrors.UnauthorizedError,
 	})
@@ -153,8 +165,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 
 func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	t := suite.T()
-	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
-	assert.NoError(t, err)
+
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+	}, suite.db)
 
 	rule := models.Rule{
 		Predicate: "attr: rule",
@@ -175,8 +193,8 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 		featureFlagRequest.DefaultValue,
 		featureFlagRequest.Type,
 		featureFlagRequest.Rules,
-		organizationID,
-		userID,
+		organization.ID,
+		user.ID,
 	)
 	featureFlagModel := models.NewFeatureFlagModel(suite.db)
 	featureFlagID, err := featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
@@ -197,38 +215,34 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	requestBody, err := json.Marshal(revisionRule)
 	assert.NoError(t, err)
 
-	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(
+	request := httptest.NewRequest(
 		http.MethodPatch,
-		"/organization/"+organizationID.Hex()+"/feature-flag/"+featureFlagID.Hex(),
+		"/organization/"+organization.ID.Hex()+"/feature-flag/"+featureFlagID.Hex(),
 		bytes.NewBuffer(requestBody),
 	)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	rec := httptest.NewRecorder()
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
+	suite.Server.ServeHTTP(recorder, request)
 
-	var jsonRes models.Revision
+	var response models.Revision
 
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, userID, jsonRes.UserID)
-	assert.Equal(t, revisionRule.DefaultValue, jsonRes.DefaultValue)
-	assert.Equal(t, models.Draft, jsonRes.Status)
-
-	savedFF, err := featureFlagModel.FindByID(context.Background(), featureFlagID)
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, user.ID, response.UserID)
+	assert.Equal(t, revisionRule.DefaultValue, response.DefaultValue)
+	assert.Equal(t, models.Draft, response.Status)
+	savedFeatureFlag, err := featureFlagModel.FindByID(context.Background(), featureFlagID)
 	assert.NoError(t, err)
-
-	savedRevisions := savedFF.Revisions
+	savedRevisions := savedFeatureFlag.Revisions
 	assert.Equal(t, len(savedRevisions), 2)
-
 	// Make sure original revision is the same
-
 	originalRevision := savedRevisions[0]
-	assert.Equal(t, userID, originalRevision.UserID)
+	assert.Equal(t, user.ID, originalRevision.UserID)
 	assert.Equal(t, featureFlagRequest.DefaultValue, originalRevision.DefaultValue)
 	assert.Equal(t, models.Draft, originalRevision.Status)
 	assert.NotEmpty(t, originalRevision.Rules)
@@ -237,11 +251,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	assert.Equal(t, rule.Value, originalRule.Value)
 	assert.Equal(t, rule.Env, originalRule.Env)
 	assert.Equal(t, rule.IsEnabled, originalRule.IsEnabled)
-
 	// Check the new revision
-
 	newSavedRevision := savedRevisions[1]
-	assert.Equal(t, userID, newSavedRevision.UserID)
+	assert.Equal(t, user.ID, newSavedRevision.UserID)
 	assert.Equal(t, revisionRule.DefaultValue, newSavedRevision.DefaultValue)
 	assert.Equal(t, models.Draft, newSavedRevision.Status)
 	assert.NotEmpty(t, newSavedRevision.Rules)
@@ -255,28 +267,32 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 	t := suite.T()
 
-	userID, organizationID, err := setupUserAndOrg("notfizi@valores.com", "the company", models.ReadOnly, suite.db)
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.ReadOnly,
+		),
+	}, suite.db)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
-	token, err := apiutils.CreateJWT(userID, time.Second*120)
-	assert.NoError(t, err)
-
-	req := httptest.NewRequest(
+	request := httptest.NewRequest(
 		http.MethodPatch,
-		"/organization/"+organizationID.Hex()+"/feature-flag/"+primitive.NewObjectID().Hex(),
+		"/organization/"+organization.ID.Hex()+"/feature-flag/"+primitive.NewObjectID().Hex(),
 		nil,
 	)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	rec := httptest.NewRecorder()
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
+	suite.Server.ServeHTTP(recorder, request)
 
-	var jsonRes apierrors.Error
+	var response apierrors.Error
 
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	assert.Equal(t, jsonRes, apierrors.Error{
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+	assert.Equal(t, response, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
 		Message: apierrors.UnauthorizedError,
 	})
@@ -285,10 +301,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 	t := suite.T()
 
-	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
-	assert.NoError(t, err)
-
-	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+	}, suite.db)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	featureFlagModel := models.NewFeatureFlagModel(suite.db)
@@ -306,16 +326,16 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 			"false",
 			models.Boolean,
 			[]models.Rule{rule},
-			organizationID,
-			userID,
+			organization.ID,
+			user.ID,
 		),
 		models.NewFeatureFlagRecord(
 			"cool feature",
 			"false",
 			models.Boolean,
 			[]models.Rule{rule},
-			organizationID,
-			userID,
+			organization.ID,
+			user.ID,
 		),
 	}
 
@@ -324,22 +344,22 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 		assert.NoError(t, err)
 	}
 
-	req := httptest.NewRequest(
+	request := httptest.NewRequest(
 		http.MethodGet,
-		"/organization/"+organizationID.Hex()+"/feature-flag",
+		"/organization/"+organization.ID.Hex()+"/feature-flag",
 		nil,
 	)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	rec := httptest.NewRecorder()
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
+	suite.Server.ServeHTTP(recorder, request)
 
-	var jsonRes handlers.ListFeatureFlagResponse
+	var response handlers.ListFeatureFlagResponse
 
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, jsonRes, handlers.ListFeatureFlagResponse{
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Equal(t, handlers.ListFeatureFlagResponse{
 		Data: []models.FeatureFlagRecord{
 			*featureFlags[0],
 			*featureFlags[1],
@@ -347,16 +367,20 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 		Page:     1,
 		PageSize: 10,
 		Total:    2,
-	})
+	}, response)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 	t := suite.T()
 
-	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
-	assert.NoError(t, err)
-
-	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+	}, suite.db)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	featureFlagModel := models.NewFeatureFlagModel(suite.db)
@@ -374,16 +398,16 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 			"false",
 			models.Boolean,
 			[]models.Rule{rule},
-			organizationID,
-			userID,
+			organization.ID,
+			user.ID,
 		),
 		models.NewFeatureFlagRecord(
 			"cool feature 2",
 			"false",
 			models.Boolean,
 			[]models.Rule{rule},
-			organizationID,
-			userID,
+			organization.ID,
+			user.ID,
 		),
 	}
 
@@ -392,37 +416,41 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 		assert.NoError(t, err)
 	}
 
-	req := httptest.NewRequest(
+	request := httptest.NewRequest(
 		http.MethodGet,
-		"/organization/"+organizationID.Hex()+"/feature-flag?page=1&page_size=1",
+		"/organization/"+organization.ID.Hex()+"/feature-flag?page=1&page_size=1",
 		nil,
 	)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	rec := httptest.NewRecorder()
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
+	suite.Server.ServeHTTP(recorder, request)
 
-	var jsonRes handlers.ListFeatureFlagResponse
+	var response handlers.ListFeatureFlagResponse
 
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, jsonRes, handlers.ListFeatureFlagResponse{
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Equal(t, handlers.ListFeatureFlagResponse{
 		Data: []models.FeatureFlagRecord{
 			*featureFlags[0],
 		},
 		Page:     1,
 		PageSize: 1,
 		Total:    1,
-	})
+	}, response)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 	t := suite.T()
 
-	_, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
-	assert.NoError(t, err)
-
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+	}, suite.db)
 	user, err := models.NewUserRecord("evildoear97@gmail.com", "trying_to_steal_info", "Evil", "Doer")
 	assert.NoError(t, err)
 
@@ -433,60 +461,27 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 	token, err := apiutils.CreateJWT(userID, time.Second*120)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(
+	request := httptest.NewRequest(
 		http.MethodGet,
-		"/organization/"+organizationID.Hex()+"/feature-flag",
+		"/organization/"+organization.ID.Hex()+"/feature-flag",
 		nil,
 	)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	rec := httptest.NewRecorder()
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
+	suite.Server.ServeHTTP(recorder, request)
 
-	var jsonRes apierrors.Error
+	var response apierrors.Error
 
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, http.StatusForbidden, rec.Code)
-	assert.Equal(t, jsonRes, apierrors.Error{
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusForbidden, recorder.Code)
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
 		Message: apierrors.ForbiddenError,
-	})
+	}, response)
 }
 
 func TestFeatureFlagHandlerTestSuite(t *testing.T) {
 	suite.Run(t, new(FeatureFlagHandlerTestSuite))
-}
-
-func setupUserAndOrg(
-	email, orgName string,
-	permission models.PermissionLevelEnum,
-	db *mongo.Database,
-) (primitive.ObjectID, primitive.ObjectID, error) {
-	userModel := models.NewUserModel(db)
-	userRecord, err := models.NewUserRecord(email, "default", "fizi", "valores")
-	if err != nil {
-		return primitive.NewObjectID(), primitive.NewObjectID(), err
-	}
-
-	userID, err := userModel.InsertOne(context.Background(), userRecord)
-	if err != nil {
-		return primitive.NewObjectID(), primitive.NewObjectID(), err
-	}
-	userRecord.ID = userID
-
-	organizationModel := models.NewOrganizationModel(db)
-	organizationRecord := models.NewOrganizationRecord(orgName, userRecord)
-	organizationRecord.Members = []models.OrganizationMember{
-		{
-			User:            *userRecord,
-			PermissionLevel: permission,
-		},
-	}
-	organizationID, err := organizationModel.InsertOne(context.Background(), organizationRecord)
-	if err != nil {
-		return primitive.NewObjectID(), primitive.NewObjectID(), err
-	}
-
-	return userID, organizationID, nil
 }

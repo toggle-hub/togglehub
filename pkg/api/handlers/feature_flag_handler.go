@@ -153,8 +153,8 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	req := new(PostFeatureFlagRequest)
-	if err := c.Bind(req); err != nil {
+	request := new(PostFeatureFlagRequest)
+	if err := c.Bind(request); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(
 			c,
@@ -165,7 +165,7 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 
 	validate := validator.New()
 
-	if err := validate.Struct(req); err != nil {
+	if err := validate.Struct(request); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
 			http.StatusBadRequest,
@@ -175,15 +175,15 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 
 	featureFlagModel := models.NewFeatureFlagModel(ffh.db)
 	featureFlagRecord := models.NewFeatureFlagRecord(
-		req.Name,
-		req.DefaultValue,
-		req.Type,
-		req.Rules,
+		request.Name,
+		request.DefaultValue,
+		request.Type,
+		request.Rules,
 		organizationID,
 		userID,
 	)
 
-	insertedID, err := featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
+	_, err = featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
@@ -191,7 +191,6 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 			apierrors.InternalServerError,
 		)
 	}
-	featureFlagRecord.ID = insertedID
 
 	return c.JSON(http.StatusCreated, featureFlagRecord)
 }
@@ -247,8 +246,8 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	req := new(PatchFeatureFlagRequest)
-	if err := c.Bind(req); err != nil {
+	request := new(PatchFeatureFlagRequest)
+	if err := c.Bind(request); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(
 			c,
@@ -260,8 +259,8 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 	model := models.NewFeatureFlagModel(ffh.db)
 
 	revision := model.NewRevisionRecord(
-		req.DefaultValue,
-		req.Rules,
+		request.DefaultValue,
+		request.Rules,
 		userID,
 	)
 	_, err = model.UpdateOne(

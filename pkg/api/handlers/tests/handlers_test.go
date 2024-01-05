@@ -22,19 +22,19 @@ func (suite *HandlersSuite) SetupTest() {
 }
 
 func (suite *HandlersSuite) TestHealthHanlderHealthy() {
-	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	recorder := httptest.NewRecorder()
 
-	c := suite.Server.NewContext(req, rec)
-	var jsonRes handlers.HealthResponse
+	c := suite.Server.NewContext(request, recorder)
+	var response handlers.HealthResponse
 
 	assert.NoError(suite.T(), handlers.HealthHandler(c))
-	assert.NoError(suite.T(), json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(suite.T(), http.StatusOK, rec.Code)
+	assert.NoError(suite.T(), json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(suite.T(), http.StatusOK, recorder.Code)
 	assert.Equal(suite.T(), handlers.HealthResponse{
 		Alive: true,
-	}, jsonRes)
+	}, response)
 }
 
 func TestHandlers(t *testing.T) {
