@@ -166,7 +166,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	t := suite.T()
 
-	user := fixtures.CreateUser("", "", "", "", suite.db)
+	user := fixtures.CreateUser("", "", "fizi", "valores", suite.db)
 	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
 		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
 			user,
