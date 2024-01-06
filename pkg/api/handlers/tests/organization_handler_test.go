@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
@@ -59,42 +60,32 @@ func (suite *OrganizationHandlerTestSuite) TestPostOrganizationHandlerSuccess() 
 	t := suite.T()
 
 	model := models.NewOrganizationModel(suite.db)
-	userModel := models.NewUserModel(suite.db)
-	r, err := models.NewUserRecord(
-		"fizi@gmail.com",
-		"123123",
-		"fizi",
-		"valores",
-	)
-	assert.NoError(t, err)
 
-	userID, err := userModel.InsertOne(context.Background(), r)
-	assert.NoError(t, err)
-
-	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	requestBody := []byte(`{
 		"name": "the company"
 	}`)
 
-	req := httptest.NewRequest(http.MethodPost, "/organization", bytes.NewBuffer(requestBody))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	rec := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/organization", bytes.NewBuffer(requestBody))
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
+	suite.Server.ServeHTTP(recorder, request)
 
-	var jsonRes models.OrganizationRecord
+	var response models.OrganizationRecord
 
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &jsonRes))
-	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusCreated, recorder.Code)
 
-	organization, err := model.FindByID(context.Background(), jsonRes.ID)
+	organization, err := model.FindByID(context.Background(), response.ID)
 	assert.NoError(t, err)
-	assert.Equal(t, jsonRes.ID, organization.ID)
-	assert.Equal(t, jsonRes.Members, organization.Members)
-	assert.Equal(t, jsonRes.Name, organization.Name)
+	assert.Equal(t, organization.ID, response.ID)
+	assert.Equal(t, organization.Members, response.Members)
+	assert.Equal(t, organization.Name, response.Name)
 }
 
 func TestOrganizationHandlerTestSuite(t *testing.T) {

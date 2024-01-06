@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const FeatureFlagCollectionName = "feature_flag"
@@ -108,15 +109,14 @@ func NewRevisionRecord(defaultValue string, rules []Rule, userID primitive.Objec
 	}
 }
 
-func (ffm *FeatureFlagModel) InsertOne(ctx context.Context, rec *FeatureFlagRecord) (primitive.ObjectID, error) {
-	rec.ID = primitive.NewObjectID()
-	result, err := ffm.collection.InsertOne(ctx, rec)
+func (ffm *FeatureFlagModel) InsertOne(ctx context.Context, record *FeatureFlagRecord) (primitive.ObjectID, error) {
+	record.ID = primitive.NewObjectID()
+	result, err := ffm.collection.InsertOne(ctx, record)
 	if err != nil {
 		return primitive.NilObjectID, err
 	}
 
 	objectID, ok := result.InsertedID.(primitive.ObjectID)
-
 	if !ok {
 		return primitive.NilObjectID, errors.New("unable to assert type of objectID")
 	}
@@ -137,9 +137,15 @@ var EmptyFeatureRecordList = []FeatureFlagRecord{}
 func (ffm *FeatureFlagModel) FindMany(
 	ctx context.Context,
 	organizationID primitive.ObjectID,
+	page,
+	limit int,
 ) ([]FeatureFlagRecord, error) {
+	findOptions := options.Find()
+	findOptions.SetSkip(int64((page - 1) * limit))
+	findOptions.SetLimit(int64(limit))
+
 	records := make([]FeatureFlagRecord, 0)
-	cursor, err := ffm.collection.Find(ctx, bson.D{{Key: "organization_id", Value: organizationID}})
+	cursor, err := ffm.collection.Find(ctx, bson.D{{Key: "organization_id", Value: organizationID}}, findOptions)
 	if err != nil {
 		return EmptyFeatureRecordList, err
 	}

@@ -32,8 +32,8 @@ type SignUpRequest struct {
 }
 
 func (sh *SignUpHandler) PostUser(c echo.Context) error {
-	req := new(SignUpRequest)
-	if err := c.Bind(req); err != nil {
+	request := new(SignUpRequest)
+	if err := c.Bind(request); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
 			http.StatusBadRequest,
@@ -43,7 +43,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 
 	validate := validator.New()
 
-	if err := validate.Struct(req); err != nil {
+	if err := validate.Struct(request); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
 			http.StatusBadRequest,
@@ -52,7 +52,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	}
 
 	model := models.NewUserModel(sh.db)
-	_, err := model.FindByEmail(context.Background(), req.Email)
+	_, err := model.FindByEmail(context.Background(), request.Email)
 	if err == nil {
 		log.Println(apiutils.HandlerErrorLogMessage(errors.New(apierrors.EmailConflictError), c))
 		return apierrors.CustomError(c,
@@ -61,7 +61,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		)
 	}
 
-	ur, err := models.NewUserRecord(req.Email, req.Password, "", "")
+	ur, err := models.NewUserRecord(request.Email, request.Password, "", "")
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,

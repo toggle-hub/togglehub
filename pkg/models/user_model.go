@@ -5,11 +5,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/storage"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const UserCollectionName = "user"
@@ -86,7 +87,7 @@ type UserRecord struct {
 }
 
 func NewUserRecord(email, password, firstName, lastName string) (*UserRecord, error) {
-	ep, err := apiutils.EncryptPassword(password)
+	ep, err := encryptPassword(password)
 	if err != nil {
 		return nil, err
 	}
@@ -100,4 +101,13 @@ func NewUserRecord(email, password, firstName, lastName string) (*UserRecord, er
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		}}, nil
+}
+
+func encryptPassword(password string) (string, error) {
+	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), config.BCryptCost)
+	if err != nil {
+		return "", err
+	}
+
+	return string(encryptedPassword), nil
 }

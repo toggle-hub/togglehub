@@ -26,9 +26,9 @@ type SignInRequest struct {
 }
 
 func (sh *SignInHandler) PostSignIn(c echo.Context) error {
-	req := new(SignInRequest)
+	request := new(SignInRequest)
 
-	if err := c.Bind(req); err != nil {
+	if err := c.Bind(request); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
@@ -38,7 +38,7 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 
 	model := models.NewUserModel(sh.db)
 
-	ur, err := model.FindByEmail(context.Background(), req.Email)
+	ur, err := model.FindByEmail(context.Background(), request.Email)
 
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
@@ -56,7 +56,7 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 		)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(ur.Password), []byte(req.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(ur.Password), []byte(request.Password)); err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(
 			c,
