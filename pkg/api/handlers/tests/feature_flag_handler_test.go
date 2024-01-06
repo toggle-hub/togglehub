@@ -50,7 +50,7 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 	)
 	suite.Server.GET("/organization/:organizationID/feature-flag", middlewares.AuthMiddleware(h.ListFeatureFlags))
 	suite.Server.PATCH(
-		"organization/:organizationID/feature-flag/:featureFlagID/revision/:revisionID",
+		"/organization/:organizationID/feature-flag/:featureFlagID/revision/:revisionID",
 		middlewares.AuthMiddleware(h.ApproveRevision),
 	)
 }
