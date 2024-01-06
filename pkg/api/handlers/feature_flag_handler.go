@@ -334,23 +334,22 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		)
 	}
 
-	filters := bson.D{{Key: "_id", Value: featureFlagID}, {Key: "revisions.status", Value: "live"}}
-	newValues := bson.D{{Key: "$set", Value: bson.D{{Key: "revisions.$.status", Value: "draft"}}}}
-	_, err = model.UpdateOne(context.Background(), filters, newValues)
-	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
-		return apierrors.CustomError(c,
-			http.StatusInternalServerError,
-			apierrors.InternalServerError,
-		)
+	for index, revision := range featureFlagRecord.Revisions {
+		if revision.Status == models.Live {
+			featureFlagRecord.Revisions[index].Status = models.Draft
+		}
+		if revision.ID == revisionID && revision.Status != models.Live {
+			featureFlagRecord.Revisions[index].Status = models.Live
+		}
 	}
+	featureFlagRecord.Version = featureFlagRecord.Version + 1
 
-	filters = bson.D{{Key: "_id", Value: featureFlagID}, {Key: "revisions._id", Value: revisionID}}
-	newValues = bson.D{
+	filters := bson.D{{Key: "_id", Value: featureFlagID}}
+	newValues := bson.D{
 		{
 			Key: "$set", Value: bson.D{
-				{Key: "version", Value: featureFlagRecord.Version + 1},
-				{Key: "revisions.$.status", Value: "live"},
+				{Key: "version", Value: featureFlagRecord.Version},
+				{Key: "revisions", Value: featureFlagRecord.Revisions},
 			},
 		},
 	}
