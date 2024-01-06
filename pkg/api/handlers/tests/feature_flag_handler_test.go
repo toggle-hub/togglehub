@@ -522,6 +522,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 	featureFlagRecord.Revisions[0].Status = models.Live
 	featureFlagModel := models.NewFeatureFlagModel(suite.db)
 	featureFlagID, err := featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
+	assert.NoError(t, err)
 
 	willBeLiveRevision := models.NewRevisionRecord("value", []models.Rule{rule}, user.ID)
 	willBeControlRevision := models.NewRevisionRecord("value", []models.Rule{rule}, user.ID)
@@ -531,13 +532,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 		bson.D{{Key: "_id", Value: featureFlagID}},
 		bson.D{{Key: "$push", Value: bson.M{"revisions": willBeLiveRevision}}},
 	)
+	assert.NoError(t, err)
 
 	_, err = featureFlagModel.UpdateOne(
 		context.Background(),
 		bson.D{{Key: "_id", Value: featureFlagID}},
 		bson.D{{Key: "$push", Value: bson.M{"revisions": willBeControlRevision}}},
 	)
-
 	assert.NoError(t, err)
 
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)

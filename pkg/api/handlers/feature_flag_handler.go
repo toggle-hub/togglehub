@@ -341,7 +341,6 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 	}
 
 	model := models.NewFeatureFlagModel(ffh.db)
-
 	featureFlagRecord, err := model.FindByID(context.Background(), featureFlagID)
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
@@ -360,7 +359,7 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 			featureFlagRecord.Revisions[index].Status = models.Live
 		}
 	}
-	featureFlagRecord.Version = featureFlagRecord.Version + 1
+	featureFlagRecord.Version++
 
 	filters := bson.D{{Key: "_id", Value: featureFlagID}}
 	newValues := bson.D{
