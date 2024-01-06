@@ -584,14 +584,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
 			models.Admin,
 		),
 	}, suite.db)
-	user, err := models.NewUserRecord("evildoear97@gmail.com", "trying_to_steal_info", "Evil", "Doer")
-	assert.NoError(t, err)
 
-	userModel := models.NewUserModel(suite.db)
-	userID, err := userModel.InsertOne(context.Background(), user)
-	assert.NoError(t, err)
+	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
 
-	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(
