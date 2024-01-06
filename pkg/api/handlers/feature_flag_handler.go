@@ -258,7 +258,7 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 
 	model := models.NewFeatureFlagModel(ffh.db)
 
-	revision := model.NewRevisionRecord(
+	revision := models.NewRevisionRecord(
 		request.DefaultValue,
 		request.Rules,
 		userID,

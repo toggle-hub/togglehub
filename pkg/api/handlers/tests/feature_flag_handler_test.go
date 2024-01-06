@@ -428,7 +428,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	order := httptest.NewRecorder()
+	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
 
@@ -489,8 +489,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 
 func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 	t := suite.T()
-	userID, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
-	assert.NoError(t, err)
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+	}, suite.db)
 
 	rule := models.Rule{
 		Predicate: "attr: rule",
@@ -511,15 +516,15 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 		featureFlagRequest.DefaultValue,
 		featureFlagRequest.Type,
 		featureFlagRequest.Rules,
-		organizationID,
-		userID,
+		organization.ID,
+		user.ID,
 	)
 	featureFlagRecord.Revisions[0].Status = models.Live
 	featureFlagModel := models.NewFeatureFlagModel(suite.db)
 	featureFlagID, err := featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
 
-	willBeLiveRevision := models.NewRevisionRecord("value", []models.Rule{rule}, userID)
-	willBeControlRevision := models.NewRevisionRecord("value", []models.Rule{rule}, userID)
+	willBeLiveRevision := models.NewRevisionRecord("value", []models.Rule{rule}, user.ID)
+	willBeControlRevision := models.NewRevisionRecord("value", []models.Rule{rule}, user.ID)
 
 	_, err = featureFlagModel.UpdateOne(
 		context.Background(),
@@ -535,12 +540,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 
 	assert.NoError(t, err)
 
-	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(
 		http.MethodPatch,
-		"/organization/"+organizationID.Hex()+
+		"/organization/"+organization.ID.Hex()+
 			"/feature-flag/"+featureFlagID.Hex()+
 			"/revision/"+willBeLiveRevision.ID.Hex(),
 		nil,
@@ -571,9 +576,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
 	t := suite.T()
 
-	_, organizationID, err := setupUserAndOrg("fizi@valores.com", "org", models.Admin, suite.db)
-	assert.NoError(t, err)
-
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+	}, suite.db)
 	user, err := models.NewUserRecord("evildoear97@gmail.com", "trying_to_steal_info", "Evil", "Doer")
 	assert.NoError(t, err)
 
@@ -586,7 +595,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
 
 	req := httptest.NewRequest(
 		http.MethodPatch,
-		"/organization/"+organizationID.Hex()+
+		"/organization/"+organization.ID.Hex()+
 			"/feature-flag/"+primitive.NewObjectID().Hex()+
 			"/revision/"+primitive.NewObjectID().Hex(),
 		nil,
