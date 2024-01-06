@@ -362,7 +362,7 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		)
 	}
 
-	return c.JSON(http.StatusOK, featureFlagID)
+	return c.JSON(http.StatusOK, featureFlagRecord)
 }
 
 func userHasPermission(
