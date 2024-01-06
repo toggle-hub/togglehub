@@ -310,7 +310,7 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		)
 	}
 
-	permission := userHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
 		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
 		return apierrors.CustomError(
@@ -381,27 +381,4 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, featureFlagRecord)
-}
-
-func userHasPermission(
-	userID primitive.ObjectID,
-	organization *models.OrganizationRecord,
-	permission models.PermissionLevelEnum,
-) bool {
-	for _, member := range organization.Members {
-		if member.User.ID == userID {
-			switch permission {
-			case models.Admin:
-				return member.PermissionLevel == permission
-			case models.Collaborator:
-				return member.PermissionLevel == permission || member.PermissionLevel == models.Admin
-			case models.ReadOnly:
-				return member.PermissionLevel == permission ||
-					member.PermissionLevel == models.Collaborator ||
-					member.PermissionLevel == models.Admin
-			}
-		}
-	}
-
-	return false
 }
