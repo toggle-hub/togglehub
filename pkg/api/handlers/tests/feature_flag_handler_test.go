@@ -22,6 +22,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -48,6 +49,10 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 		middlewares.AuthMiddleware(h.PatchFeatureFlag),
 	)
 	suite.Server.GET("/organization/:organizationID/feature-flag", middlewares.AuthMiddleware(h.ListFeatureFlags))
+	suite.Server.PATCH(
+		"/organization/:organizationID/feature-flag/:featureFlagID/revision/:revisionID",
+		middlewares.AuthMiddleware(h.ApproveRevision),
+	)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) AfterTest(_, _ string) {
@@ -157,10 +162,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
-	assert.Equal(t, response, apierrors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
 		Message: apierrors.UnauthorizedError,
-	})
+	}, response)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
@@ -292,10 +297,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
-	assert.Equal(t, response, apierrors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
 		Message: apierrors.UnauthorizedError,
-	})
+	}, response)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
@@ -479,6 +484,132 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
 		Message: apierrors.ForbiddenError,
+	}, response)
+}
+
+func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
+	t := suite.T()
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+	}, suite.db)
+
+	rule := models.Rule{
+		Predicate: "attr: rule",
+		Value:     "false",
+		Env:       "dev",
+		IsEnabled: true,
+	}
+	featureFlagRequest := &handlers.PostFeatureFlagRequest{
+		Name:         "cool feature",
+		Type:         models.Boolean,
+		DefaultValue: "false",
+		Rules: []models.Rule{
+			rule,
+		},
+	}
+	featureFlagRecord := models.NewFeatureFlagRecord(
+		featureFlagRequest.Name,
+		featureFlagRequest.DefaultValue,
+		featureFlagRequest.Type,
+		featureFlagRequest.Rules,
+		organization.ID,
+		user.ID,
+	)
+	featureFlagRecord.Revisions[0].Status = models.Live
+	featureFlagModel := models.NewFeatureFlagModel(suite.db)
+	featureFlagID, err := featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
+	assert.NoError(t, err)
+
+	willBeLiveRevision := models.NewRevisionRecord("value", []models.Rule{rule}, user.ID)
+	willBeControlRevision := models.NewRevisionRecord("value", []models.Rule{rule}, user.ID)
+
+	_, err = featureFlagModel.UpdateOne(
+		context.Background(),
+		bson.D{{Key: "_id", Value: featureFlagID}},
+		bson.D{{Key: "$push", Value: bson.M{"revisions": willBeLiveRevision}}},
+	)
+	assert.NoError(t, err)
+
+	_, err = featureFlagModel.UpdateOne(
+		context.Background(),
+		bson.D{{Key: "_id", Value: featureFlagID}},
+		bson.D{{Key: "$push", Value: bson.M{"revisions": willBeControlRevision}}},
+	)
+	assert.NoError(t, err)
+
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(
+		http.MethodPatch,
+		"/organization/"+organization.ID.Hex()+
+			"/feature-flag/"+featureFlagID.Hex()+
+			"/revision/"+willBeLiveRevision.ID.Hex(),
+		nil,
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	rec := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	savedFeatureFlag, err := featureFlagModel.FindByID(context.Background(), featureFlagID)
+	assert.NoError(t, err)
+
+	savedRevisions := savedFeatureFlag.Revisions
+	assert.Equal(t, len(savedRevisions), 3)
+	assert.Equal(t, savedFeatureFlag.Version, 2)
+
+	originalRevision := savedRevisions[0]
+	assert.Equal(t, models.Draft, originalRevision.Status)
+	updatedRevision := savedRevisions[1]
+	assert.Equal(t, models.Live, updatedRevision.Status)
+	controlRevision := savedRevisions[2]
+	assert.Equal(t, models.Draft, controlRevision.Status)
+}
+
+func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
+	t := suite.T()
+
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+	}, suite.db)
+
+	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
+
+	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(
+		http.MethodPatch,
+		"/organization/"+organization.ID.Hex()+
+			"/feature-flag/"+primitive.NewObjectID().Hex()+
+			"/revision/"+primitive.NewObjectID().Hex(),
+		nil,
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	rec := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(rec, req)
+
+	var response apierrors.Error
+
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Equal(t, apierrors.Error{
+		Error:   http.StatusText(http.StatusUnauthorized),
+		Message: apierrors.UnauthorizedError,
 	}, response)
 }
 

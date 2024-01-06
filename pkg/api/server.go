@@ -65,4 +65,8 @@ func registerRoutes(app *App) {
 	organizationGroup.POST("/:organizationID/feature-flag", featureFlagHandler.PostFeatureFlag)
 	organizationGroup.PATCH("/:organizationID/feature-flag/featureFlagID", featureFlagHandler.PatchFeatureFlag)
 	organizationGroup.GET("/:organizationID/feature-flag", featureFlagHandler.ListFeatureFlags)
+	organizationGroup.PATCH(
+		"/:organizationID/feature-flag/featureFlagID/revision/:revisionID",
+		featureFlagHandler.ApproveRevision,
+	)
 }
