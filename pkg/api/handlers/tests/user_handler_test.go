@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
@@ -39,8 +40,8 @@ func (suite *UserHandlerTestSuite) SetupTest() {
 
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
-
-	h := handlers.NewUserHandler(suite.db)
+	logger, _ := common.NewZapLogger()
+	h := handlers.NewUserHandler(suite.db, logger)
 	suite.Server.PATCH("/user", middlewares.AuthMiddleware(h.PatchUser))
 }
 

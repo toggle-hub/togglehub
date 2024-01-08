@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
@@ -38,7 +39,9 @@ func (suite *OrganizationHandlerTestSuite) SetupTest() {
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
 
-	h := handlers.NewOrganizationHandler(suite.db)
+	logger, _ := common.NewZapLogger()
+
+	h := handlers.NewOrganizationHandler(suite.db, logger)
 	suite.Server.POST("/organization", middlewares.AuthMiddleware(h.PostOrganization))
 }
 

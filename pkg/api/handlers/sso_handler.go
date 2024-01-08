@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net/http"
 	"os"
 
@@ -16,59 +15,55 @@ import (
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
 type SsoHandler struct {
-	ssogolang         *oauth2.Config
-	db                *mongo.Database
-	httpClient        apiutils.BaseHTTPClient
-	customOAuthClient apiutils.OAuthClient
+	oauthConfig *oauth2.Config
+	db          *mongo.Database
+	logger      *zap.Logger
+	httpClient  apiutils.BaseHTTPClient
+	oauthClient apiutils.OAuthClient
 }
 
-var RandomString = "random-string"
-
-func NewSsoHandler(ssogolang *oauth2.Config, db *mongo.Database) *SsoHandler {
-	return &SsoHandler{
-		ssogolang: &oauth2.Config{
-			RedirectURL:  os.Getenv("REDIRECT_URL"),
-			ClientID:     os.Getenv("CLIENT_ID"),
-			ClientSecret: os.Getenv("CLIENT_SECRET"),
-			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "openid"},
-			Endpoint:     google.Endpoint,
-		},
-		db:                db,
-		httpClient:        &apiutils.HTTPClient{},
-		customOAuthClient: apiutils.NewRealOAuthClient(ssogolang),
-	}
-}
-
-func NewSsoHandlerForTest(
+func NewSsoHandler(
 	db *mongo.Database,
+	oauthConfig *oauth2.Config,
+	logger *zap.Logger,
 	httpClient apiutils.BaseHTTPClient,
 	oauthClient apiutils.OAuthClient,
 ) *SsoHandler {
 	return &SsoHandler{
-		ssogolang:         &oauth2.Config{},
-		db:                db,
-		httpClient:        httpClient,
-		customOAuthClient: oauthClient,
+		oauthConfig: oauthConfig,
+		db:          db,
+		logger:      logger,
+		httpClient:  httpClient,
+		oauthClient: oauthClient,
 	}
 }
 
 func (sh *SsoHandler) Signin(c echo.Context) error {
-	url := sh.ssogolang.AuthCodeURL(RandomString)
+	randomString := os.Getenv("OAUTH_RANDOM_STRING")
+
+	if randomString == "" {
+		randomString = "random-string"
+	}
+
+	url := sh.oauthConfig.AuthCodeURL(randomString)
 	return c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
 func (sh *SsoHandler) Callback(c echo.Context) error {
 	state := c.QueryParam("state")
 	code := c.QueryParam("code")
-	log.Print(state, code)
-	userDataBytes, err := GetUserData(state, code, sh.customOAuthClient, sh.httpClient)
+
+	userDataBytes, err := sh.getUserOAuthData(state, code)
+
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -78,7 +73,9 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	userData := new(models.UserRecord)
 	err = json.Unmarshal(userDataBytes, userData)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -89,16 +86,18 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	model := models.NewUserModel(sh.db)
 	foundRecord, err := model.FindByEmail(context.Background(), userData.Email)
 	if err == nil {
-		log.Println(apiutils.HandlerErrorLogMessage(errors.New(apierrors.EmailConflictError), c))
 		token, err := apiutils.CreateJWT(foundRecord.ID, config.JWTExpireTime)
 		if err != nil {
-			log.Println(apiutils.HandlerErrorLogMessage(err, c))
+			sh.logger.Debug("Server error",
+				zap.String("cause", err.Error()),
+			)
 			return apierrors.CustomError(
 				c,
 				http.StatusInternalServerError,
 				apierrors.InternalServerError,
 			)
 		}
+
 		return c.JSON(http.StatusOK, common.AuthResponse{
 			ID:        foundRecord.ID,
 			Email:     foundRecord.Email,
@@ -110,7 +109,9 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 
 	objectID, err := model.InsertOne(context.Background(), userData)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -120,7 +121,9 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 
 	token, err := apiutils.CreateJWT(objectID, config.JWTExpireTime)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -128,7 +131,9 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 		)
 	}
 
-	log.Println(apiutils.HandlerLogMessage("user", objectID, c))
+	sh.logger.Debug("User created",
+		zap.String("_id", objectID.Hex()),
+	)
 	return c.JSON(http.StatusCreated, common.AuthResponse{
 		ID:    userData.ID,
 		Email: userData.Email,
@@ -136,22 +141,25 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	})
 }
 
-func GetUserData(
+func (sh *SsoHandler) getUserOAuthData(
 	state string,
 	code string,
-	ssogolang apiutils.OAuthClient,
-	httpClient apiutils.BaseHTTPClient,
 ) ([]byte, error) {
-	if state != RandomString {
+	randomString := os.Getenv("OAUTH_RANDOM_STRING")
+	if randomString == "" {
+		randomString = "random-string"
+	}
+
+	if state != randomString {
 		return nil, errors.New("invalid user state")
 	}
 
-	token, err := ssogolang.Exchange(context.Background(), code)
+	token, err := sh.oauthClient.Exchange(context.Background(), code)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := httpClient.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
+	response, err := sh.httpClient.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
 	if err != nil {
 		return nil, err
 	}

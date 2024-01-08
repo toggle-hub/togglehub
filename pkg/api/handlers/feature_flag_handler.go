@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
-	"log"
 	"net/http"
 
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
@@ -14,15 +12,18 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 )
 
 type FeatureFlagHandler struct {
-	db *mongo.Database
+	db     *mongo.Database
+	logger *zap.Logger
 }
 
-func NewFeatureFlagHandler(db *mongo.Database) *FeatureFlagHandler {
+func NewFeatureFlagHandler(db *mongo.Database, logger *zap.Logger) *FeatureFlagHandler {
 	return &FeatureFlagHandler{
-		db: db,
+		db:     db,
+		logger: logger,
 	}
 }
 
@@ -53,7 +54,9 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 
 	userID, err := apiutils.GetObjectIDFromContext(c)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusUnauthorized,
@@ -63,7 +66,9 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 
 	organizationID, err := primitive.ObjectIDFromHex(c.Param("organizationID"))
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusBadRequest,
@@ -73,7 +78,9 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 	organizationModel := models.NewOrganizationModel(ffh.db)
 	organization, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -83,6 +90,9 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 
 	permission := apiutils.UserHasPermission(userID, organization, models.ReadOnly)
 	if !permission {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", apierrors.ForbiddenError),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusForbidden,
@@ -94,6 +104,9 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 
 	featureFlags, err := model.FindMany(context.Background(), organizationID, page, limit)
 	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -101,9 +114,6 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 		)
 	}
 
-	bytes, _ := json.Marshal(featureFlags)
-
-	log.Println(apiutils.HandlerLogMessage(string(bytes), primitive.NewObjectID(), c))
 	return c.JSON(http.StatusOK, ListFeatureFlagResponse{
 		Data:     featureFlags,
 		Page:     page,
@@ -115,7 +125,9 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 	userID, err := apiutils.GetObjectIDFromContext(c)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusUnauthorized,
@@ -125,7 +137,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 
 	organizationID, err := primitive.ObjectIDFromHex(c.Param("organizationID"))
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusBadRequest,
@@ -136,7 +150,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 	organizationModel := models.NewOrganizationModel(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
@@ -145,7 +161,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 
 	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
-		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", apierrors.UnauthorizedError),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusUnauthorized,
@@ -155,7 +173,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 
 	request := new(PostFeatureFlagRequest)
 	if err := c.Bind(request); err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusBadRequest,
@@ -166,7 +186,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 	validate := validator.New()
 
 	if err := validate.Struct(request); err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusBadRequest,
 			apierrors.BadRequestError,
@@ -185,7 +207,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 
 	_, err = featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
@@ -198,7 +222,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 	userID, err := apiutils.GetObjectIDFromContext(c)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusUnauthorized,
@@ -208,7 +234,9 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 
 	organizationID, err := primitive.ObjectIDFromHex(c.Param("organizationID"))
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusBadRequest,
@@ -219,7 +247,9 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 	organizationModel := models.NewOrganizationModel(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
@@ -228,7 +258,9 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 
 	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
-		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", apierrors.UnauthorizedError),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusUnauthorized,
@@ -238,7 +270,9 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 
 	featureFlagID, err := primitive.ObjectIDFromHex(c.Param("featureFlagID"))
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusBadRequest,
@@ -248,7 +282,9 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 
 	request := new(PatchFeatureFlagRequest)
 	if err := c.Bind(request); err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusBadRequest,
@@ -269,7 +305,9 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		bson.D{{Key: "$push", Value: bson.M{"revisions": revision}}},
 	)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
@@ -282,7 +320,9 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 	userID, err := apiutils.GetObjectIDFromContext(c)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusUnauthorized,
@@ -292,7 +332,9 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 
 	organizationID, err := primitive.ObjectIDFromHex(c.Param("organizationID"))
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusBadRequest,
@@ -303,7 +345,9 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 	organizationModel := models.NewOrganizationModel(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
@@ -312,7 +356,9 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 
 	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
-		log.Println(apiutils.HandlerLogMessage("feature-flag", userID, c))
+		ffh.logger.Debug("Server error",
+			zap.String("cause", apierrors.UnauthorizedError),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusUnauthorized,
@@ -322,7 +368,9 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 
 	featureFlagID, err := primitive.ObjectIDFromHex(c.Param("featureFlagID"))
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusBadRequest,
@@ -332,7 +380,9 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 
 	revisionID, err := primitive.ObjectIDFromHex(c.Param("revisionID"))
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusBadRequest,
@@ -343,7 +393,9 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 	model := models.NewFeatureFlagModel(ffh.db)
 	featureFlagRecord, err := model.FindByID(context.Background(), featureFlagID)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -372,7 +424,9 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 	}
 	_, err = model.UpdateOne(context.Background(), filters, newValues)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,

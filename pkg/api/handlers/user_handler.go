@@ -9,19 +9,23 @@ import (
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 )
 
 type UserHandler struct {
-	db *mongo.Database
+	db     *mongo.Database
+	logger *zap.Logger
 }
 
-func NewUserHandler(db *mongo.Database) *UserHandler {
+func NewUserHandler(db *mongo.Database, logger *zap.Logger) *UserHandler {
 	return &UserHandler{
-		db: db,
+		db:     db,
+		logger: logger,
 	}
 }
 
@@ -37,9 +41,24 @@ type UserPatchResponse struct {
 	LastName  string             `json:"last_name,omitempty" `
 }
 
-func (sh *UserHandler) PatchUser(c echo.Context) error {
+func (uh *UserHandler) PatchUser(c echo.Context) error {
 	request := new(UserPatchRequest)
 	if err := c.Bind(request); err != nil {
+		uh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return apierrors.CustomError(c,
+			http.StatusBadRequest,
+			apierrors.BadRequestError,
+		)
+	}
+
+	validate := validator.New()
+
+	if err := validate.Struct(request); err != nil {
+		uh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusBadRequest,
 			apierrors.BadRequestError,
@@ -51,17 +70,32 @@ func (sh *UserHandler) PatchUser(c echo.Context) error {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		// Should never happen but better safe than sorry
 		if errors.Is(err, apiutils.ErrNotAuthenticated) {
+			uh.logger.Debug("Client error",
+				zap.String("cause", err.Error()),
+			)
 			return apierrors.CustomError(
 				c,
 				http.StatusUnauthorized,
 				apierrors.UnauthorizedError,
 			)
 		}
+
+		uh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return apierrors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
 	}
 
-	model := models.NewUserModel(sh.db)
+	model := models.NewUserModel(uh.db)
 	ur, err := model.FindByID(context.Background(), userID)
 	if err != nil {
+		uh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusNotFound,
 			apierrors.NotFoundError,
@@ -78,6 +112,9 @@ func (sh *UserHandler) PatchUser(c echo.Context) error {
 	)
 
 	if err != nil {
+		uh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,

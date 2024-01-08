@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
-	"log"
 	"net/http"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
@@ -14,15 +12,18 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 )
 
 type SignUpHandler struct {
-	db *mongo.Database
+	db     *mongo.Database
+	logger *zap.Logger
 }
 
-func NewSignUpHandler(db *mongo.Database) *SignUpHandler {
+func NewSignUpHandler(db *mongo.Database, logger *zap.Logger) *SignUpHandler {
 	return &SignUpHandler{
-		db: db,
+		db:     db,
+		logger: logger,
 	}
 }
 
@@ -34,7 +35,9 @@ type SignUpRequest struct {
 func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	request := new(SignUpRequest)
 	if err := c.Bind(request); err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusBadRequest,
 			apierrors.BadRequestError,
@@ -44,7 +47,9 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	validate := validator.New()
 
 	if err := validate.Struct(request); err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusBadRequest,
 			apierrors.BadRequestError,
@@ -54,7 +59,9 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	model := models.NewUserModel(sh.db)
 	_, err := model.FindByEmail(context.Background(), request.Email)
 	if err == nil {
-		log.Println(apiutils.HandlerErrorLogMessage(errors.New(apierrors.EmailConflictError), c))
+		sh.logger.Debug("Client error",
+			zap.String("cause", apierrors.EmailConflictError),
+		)
 		return apierrors.CustomError(c,
 			http.StatusConflict,
 			apierrors.EmailConflictError,
@@ -63,7 +70,9 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 
 	ur, err := models.NewUserRecord(request.Email, request.Password, "", "")
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
@@ -72,7 +81,9 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 
 	objectID, err := model.InsertOne(context.Background(), ur)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
@@ -81,14 +92,17 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 
 	token, err := apiutils.CreateJWT(objectID, config.JWTExpireTime)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
 		)
 	}
-
-	log.Println(apiutils.HandlerLogMessage("user", objectID, c))
+	sh.logger.Debug("Created user",
+		zap.String("_id", objectID.Hex()),
+	)
 	return c.JSON(http.StatusCreated, common.AuthResponse{
 		ID:        objectID,
 		Email:     ur.Email,
