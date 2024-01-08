@@ -18,7 +18,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/oauth2"
@@ -26,33 +25,7 @@ import (
 
 type SsoTestSuite struct {
 	testutils.DefaultTestSuite
-	server *echo.Echo
-	db     *mongo.Database
-}
-
-type MockHTTPClient struct{}
-
-func (c *MockHTTPClient) Get(_ string) (*http.Response, error) {
-	response := httptest.NewRecorder()
-	userInfo := models.UserRecord{
-		SsoID: "12345",
-		Email: "test@test.com",
-	}
-	body, err := json.Marshal(userInfo)
-	if err != nil {
-		panic(err)
-	}
-
-	response.Body.Write(body)
-	return response.Result(), nil
-}
-
-type MockOAuthClient struct {
-	ExchangeFunc func(ctx context.Context, code string) (*oauth2.Token, error)
-}
-
-func (m *MockOAuthClient) Exchange(ctx context.Context, code string) (*oauth2.Token, error) {
-	return m.ExchangeFunc(ctx, code)
+	db *mongo.Database
 }
 
 func (suite *SsoTestSuite) SetupTest() {
@@ -61,12 +34,13 @@ func (suite *SsoTestSuite) SetupTest() {
 		log.Panic(err)
 	}
 
-	client, err := mongo.Connect(testCtx, options.Client().ApplyURI("mongodb://localhost:27017"))
+	client, err := mongo.Connect(testCtx, options.Client().ApplyURI("mongodb://test:test@localhost:27017"))
 	if err != nil {
 		panic(err)
 	}
 	suite.db = client.Database("togglelabs_test")
-	suite.server = echo.New()
+
+	suite.Server = echo.New()
 }
 
 func (suite *SsoTestSuite) AfterTest(_, _ string) {
@@ -79,14 +53,14 @@ func (suite *SsoTestSuite) TearDownSuite() {
 	if err := suite.db.Client().Disconnect(context.Background()); err != nil {
 		panic(err)
 	}
-	suite.server.Close()
+	suite.Server.Close()
 }
 
-func (suite *SignUpHandlerTestSuite) TestSSoHandlerNewUserSuccess() {
+func (suite *SsoTestSuite) TestSSoHandlerNewUserSuccess() {
 	t := suite.T()
-	collection := suite.db.Collection(models.UserCollectionName)
-	mockOAuthClient := &MockOAuthClient{
-		ExchangeFunc: func(ctc context.Context, code string) (*oauth2.Token, error) {
+
+	mockOAuthClient := &fixtures.MockOAuthClient{
+		ExchangeFunc: func(ctx context.Context, code string) (*oauth2.Token, error) {
 			return &oauth2.Token{
 				AccessToken: "mockAccessToken",
 				TokenType:   "Bearer",
@@ -94,6 +68,8 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerNewUserSuccess() {
 			}, nil
 		},
 	}
+
+	model := models.NewUserModel(suite.db)
 
 	request := httptest.NewRequest(http.MethodGet, "/callback", nil)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -103,28 +79,25 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerNewUserSuccess() {
 	urlq.Add("code", "code")
 	request.URL.RawQuery = urlq.Encode()
 
-	h := handlers.NewSsoHandlerForTest(suite.db, &MockHTTPClient{}, mockOAuthClient)
+	logger, _ := common.NewZapLogger()
+
+	h := handlers.NewSsoHandler(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
+	assert.NotNil(t, h)
 	suite.Server.GET("/callback", h.Callback)
 	suite.Server.ServeHTTP(recorder, request)
 	var response common.AuthResponse
 
-	var ur models.UserRecord
-	assert.NoError(t, collection.FindOne(context.Background(),
-		bson.D{{
-			Key:   "email",
-			Value: "test@test.com",
-		}}).Decode(&ur))
-
+	ur, err := model.FindByEmail(context.Background(), "test@test.com")
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, ur.Email, response.Email)
 	assert.NotEmpty(t, response.Token)
 }
 
-func (suite *SignUpHandlerTestSuite) TestSSoHandlerExistingUserSuccess() {
+func (suite *SsoTestSuite) TestSSoHandlerExistingUserSuccess() {
 	t := suite.T()
-
-	mockOAuthClient := &MockOAuthClient{
+	mockOAuthClient := &fixtures.MockOAuthClient{
 		ExchangeFunc: func(ctc context.Context, code string) (*oauth2.Token, error) {
 			return &oauth2.Token{
 				AccessToken: "mockAccessToken",
@@ -144,7 +117,9 @@ func (suite *SignUpHandlerTestSuite) TestSSoHandlerExistingUserSuccess() {
 	urlq.Add("code", "code")
 	request.URL.RawQuery = urlq.Encode()
 
-	h := handlers.NewSsoHandlerForTest(suite.db, &MockHTTPClient{}, mockOAuthClient)
+	logger, _ := common.NewZapLogger()
+
+	h := handlers.NewSsoHandler(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
 	suite.Server.GET("/callback", h.Callback)
 	suite.Server.ServeHTTP(recorder, request)
 	var response common.AuthResponse

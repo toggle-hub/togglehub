@@ -16,57 +16,52 @@ import (
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
 type SsoHandler struct {
-	ssogolang         *oauth2.Config
-	db                *mongo.Database
-	httpClient        apiutils.BaseHTTPClient
-	customOAuthClient apiutils.OAuthClient
+	oauthConfig *oauth2.Config
+	db          *mongo.Database
+	logger      *zap.Logger
+	httpClient  apiutils.BaseHTTPClient
+	oauthClient apiutils.OAuthClient
 }
 
-var RandomString = "random-string"
-
-func NewSsoHandler(ssogolang *oauth2.Config, db *mongo.Database) *SsoHandler {
-	return &SsoHandler{
-		ssogolang: &oauth2.Config{
-			RedirectURL:  os.Getenv("REDIRECT_URL"),
-			ClientID:     os.Getenv("CLIENT_ID"),
-			ClientSecret: os.Getenv("CLIENT_SECRET"),
-			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "openid"},
-			Endpoint:     google.Endpoint,
-		},
-		db:                db,
-		httpClient:        &apiutils.HTTPClient{},
-		customOAuthClient: apiutils.NewRealOAuthClient(ssogolang),
-	}
-}
-
-func NewSsoHandlerForTest(
+func NewSsoHandler(
 	db *mongo.Database,
+	oauthConfig *oauth2.Config,
+	logger *zap.Logger,
 	httpClient apiutils.BaseHTTPClient,
 	oauthClient apiutils.OAuthClient,
 ) *SsoHandler {
+
 	return &SsoHandler{
-		ssogolang:         &oauth2.Config{},
-		db:                db,
-		httpClient:        httpClient,
-		customOAuthClient: oauthClient,
+		oauthConfig: oauthConfig,
+		db:          db,
+		logger:      logger,
+		httpClient:  httpClient,
+		oauthClient: oauthClient,
 	}
 }
 
 func (sh *SsoHandler) Signin(c echo.Context) error {
-	url := sh.ssogolang.AuthCodeURL(RandomString)
+	randomString := os.Getenv("OAUTH_RANDOM_STRING")
+
+	if randomString == "" {
+		randomString = "random-string"
+	}
+
+	url := sh.oauthConfig.AuthCodeURL(randomString)
 	return c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
 func (sh *SsoHandler) Callback(c echo.Context) error {
 	state := c.QueryParam("state")
 	code := c.QueryParam("code")
-	log.Print(state, code)
-	userDataBytes, err := GetUserData(state, code, sh.customOAuthClient, sh.httpClient)
+
+	userDataBytes, err := GetUserData(state, code, sh.oauthClient, sh.httpClient)
+
 	if err != nil {
 		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		return apierrors.CustomError(
@@ -139,14 +134,19 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 func GetUserData(
 	state string,
 	code string,
-	ssogolang apiutils.OAuthClient,
+	oAuthClient apiutils.OAuthClient,
 	httpClient apiutils.BaseHTTPClient,
 ) ([]byte, error) {
-	if state != RandomString {
+	randomString := os.Getenv("OAUTH_RANDOM_STRING")
+	if randomString == "" {
+		randomString = "random-string"
+	}
+
+	if state != randomString {
 		return nil, errors.New("invalid user state")
 	}
 
-	token, err := ssogolang.Exchange(context.Background(), code)
+	token, err := oAuthClient.Exchange(context.Background(), code)
 	if err != nil {
 		return nil, err
 	}
