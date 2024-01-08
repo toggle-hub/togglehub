@@ -75,7 +75,7 @@ func registerRoutes(app *App) {
 	signInHandler := handlers.NewSignInHandler(app.storage.DB(), app.logger)
 	app.server.POST("/signin", signInHandler.PostSignIn)
 
-	userHandler := handlers.NewUserHandler(app.storage.DB())
+	userHandler := handlers.NewUserHandler(app.storage.DB(), app.logger)
 	userGroup := app.server.Group("/user", middlewares.AuthMiddleware)
 	userGroup.PATCH("", userHandler.PatchUser)
 

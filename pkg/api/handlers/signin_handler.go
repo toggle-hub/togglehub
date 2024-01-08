@@ -10,6 +10,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
@@ -36,6 +37,18 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
+		)
+	}
+
+	validate := validator.New()
+
+	if err := validate.Struct(request); err != nil {
+		sh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return apierrors.CustomError(c,
+			http.StatusBadRequest,
+			apierrors.BadRequestError,
 		)
 	}
 
