@@ -62,6 +62,7 @@ func registerRoutes(app *App) {
 	ssoHandler := handlers.NewSsoHandler(
 		app.storage.DB(),
 		oauthConfig,
+		app.logger,
 		&apiutils.HTTPClient{},
 		apiutils.NewOAuthClient(oauthConfig),
 	)
@@ -71,18 +72,18 @@ func registerRoutes(app *App) {
 	signUpHandler := handlers.NewSignUpHandler(app.storage.DB(), app.logger)
 	app.server.POST("/signup", signUpHandler.PostUser)
 
-	signInHandler := handlers.NewSignInHandler(app.storage.DB())
+	signInHandler := handlers.NewSignInHandler(app.storage.DB(), app.logger)
 	app.server.POST("/signin", signInHandler.PostSignIn)
 
 	userHandler := handlers.NewUserHandler(app.storage.DB())
 	userGroup := app.server.Group("/user", middlewares.AuthMiddleware)
 	userGroup.PATCH("", userHandler.PatchUser)
 
-	organizationHandler := handlers.NewOrganizationHandler(app.storage.DB())
+	organizationHandler := handlers.NewOrganizationHandler(app.storage.DB(), app.logger)
 	organizationGroup := app.server.Group("/organization", middlewares.AuthMiddleware)
 	organizationGroup.POST("", organizationHandler.PostOrganization)
 
-	featureFlagHandler := handlers.NewFeatureFlagHandler(app.storage.DB())
+	featureFlagHandler := handlers.NewFeatureFlagHandler(app.storage.DB(), app.logger)
 	organizationGroup.POST("/:organizationID/feature-flag", featureFlagHandler.PostFeatureFlag)
 	organizationGroup.PATCH("/:organizationID/feature-flag/featureFlagID", featureFlagHandler.PatchFeatureFlag)
 	organizationGroup.GET("/:organizationID/feature-flag", featureFlagHandler.ListFeatureFlags)

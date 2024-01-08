@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net/http"
 	"os"
 
@@ -60,10 +59,12 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	state := c.QueryParam("state")
 	code := c.QueryParam("code")
 
-	userDataBytes, err := GetUserData(state, code, sh.oauthClient, sh.httpClient)
+	userDataBytes, err := sh.getUserOAuthData(state, code)
 
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -73,7 +74,9 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	userData := new(models.UserRecord)
 	err = json.Unmarshal(userDataBytes, userData)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -84,16 +87,18 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	model := models.NewUserModel(sh.db)
 	foundRecord, err := model.FindByEmail(context.Background(), userData.Email)
 	if err == nil {
-		log.Println(apiutils.HandlerErrorLogMessage(errors.New(apierrors.EmailConflictError), c))
 		token, err := apiutils.CreateJWT(foundRecord.ID, config.JWTExpireTime)
 		if err != nil {
-			log.Println(apiutils.HandlerErrorLogMessage(err, c))
+			sh.logger.Debug("Server error",
+				zap.String("cause", err.Error()),
+			)
 			return apierrors.CustomError(
 				c,
 				http.StatusInternalServerError,
 				apierrors.InternalServerError,
 			)
 		}
+
 		return c.JSON(http.StatusOK, common.AuthResponse{
 			ID:        foundRecord.ID,
 			Email:     foundRecord.Email,
@@ -105,7 +110,9 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 
 	objectID, err := model.InsertOne(context.Background(), userData)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -115,7 +122,9 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 
 	token, err := apiutils.CreateJWT(objectID, config.JWTExpireTime)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -123,7 +132,9 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 		)
 	}
 
-	log.Println(apiutils.HandlerLogMessage("user", objectID, c))
+	sh.logger.Debug("User created",
+		zap.String("_id", objectID.Hex()),
+	)
 	return c.JSON(http.StatusCreated, common.AuthResponse{
 		ID:    userData.ID,
 		Email: userData.Email,
@@ -131,11 +142,9 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	})
 }
 
-func GetUserData(
+func (sh *SsoHandler) getUserOAuthData(
 	state string,
 	code string,
-	oAuthClient apiutils.OAuthClient,
-	httpClient apiutils.BaseHTTPClient,
 ) ([]byte, error) {
 	randomString := os.Getenv("OAUTH_RANDOM_STRING")
 	if randomString == "" {
@@ -146,12 +155,12 @@ func GetUserData(
 		return nil, errors.New("invalid user state")
 	}
 
-	token, err := oAuthClient.Exchange(context.Background(), code)
+	token, err := sh.oauthClient.Exchange(context.Background(), code)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := httpClient.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
+	response, err := sh.httpClient.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
 	if err != nil {
 		return nil, err
 	}

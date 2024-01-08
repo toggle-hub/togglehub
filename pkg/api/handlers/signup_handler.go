@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
@@ -36,7 +35,9 @@ type SignUpRequest struct {
 func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	request := new(SignUpRequest)
 	if err := c.Bind(request); err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		sh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusBadRequest,
 			apierrors.BadRequestError,
@@ -47,7 +48,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 
 	if err := validate.Struct(request); err != nil {
 		sh.logger.Debug("Client error",
-			zap.String("reason", err.Error()),
+			zap.String("cause", err.Error()),
 		)
 		return apierrors.CustomError(c,
 			http.StatusBadRequest,
@@ -59,7 +60,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	_, err := model.FindByEmail(context.Background(), request.Email)
 	if err == nil {
 		sh.logger.Debug("Client error",
-			zap.String("reason", apierrors.EmailConflictError),
+			zap.String("cause", apierrors.EmailConflictError),
 		)
 		return apierrors.CustomError(c,
 			http.StatusConflict,
@@ -70,7 +71,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	ur, err := models.NewUserRecord(request.Email, request.Password, "", "")
 	if err != nil {
 		sh.logger.Debug("Client error",
-			zap.String("reason", err.Error()),
+			zap.String("cause", err.Error()),
 		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
@@ -81,7 +82,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	objectID, err := model.InsertOne(context.Background(), ur)
 	if err != nil {
 		sh.logger.Debug("Server error",
-			zap.String("reason", err.Error()),
+			zap.String("cause", err.Error()),
 		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
@@ -92,7 +93,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	token, err := apiutils.CreateJWT(objectID, config.JWTExpireTime)
 	if err != nil {
 		sh.logger.Debug("Server error",
-			zap.String("reason", err.Error()),
+			zap.String("cause", err.Error()),
 		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,

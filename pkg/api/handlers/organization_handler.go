@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
@@ -11,10 +10,12 @@ import (
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 )
 
 type OrganizationHandler struct {
-	db *mongo.Database
+	db     *mongo.Database
+	logger *zap.Logger
 }
 
 type OrganizationPostRequest struct {
@@ -24,18 +25,22 @@ type OrganizationPostRequest struct {
 func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 	request := new(OrganizationPostRequest)
 	if err := c.Bind(request); err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		oh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
-			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			http.StatusBadRequest,
+			apierrors.BadRequestError,
 		)
 	}
 
 	userID, err := apiutils.GetObjectIDFromContext(c)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		// Should never happen but better safe than sorry
 		if errors.Is(err, apiutils.ErrNotAuthenticated) {
+			oh.logger.Debug("Client error",
+				zap.String("cause", err.Error()),
+			)
 			return apierrors.CustomError(
 				c,
 				http.StatusUnauthorized,
@@ -43,6 +48,9 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 			)
 		}
 
+		oh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
@@ -52,7 +60,9 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 	userModel := models.NewUserModel(oh.db)
 	user, err := userModel.FindByID(context.Background(), userID)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		oh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -72,7 +82,9 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 	_, err = model.InsertOne(context.Background(), organization)
 
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		oh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
 			apierrors.InternalServerError,
@@ -82,8 +94,9 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 	return c.JSON(http.StatusCreated, organization)
 }
 
-func NewOrganizationHandler(db *mongo.Database) *OrganizationHandler {
+func NewOrganizationHandler(db *mongo.Database, logger *zap.Logger) *OrganizationHandler {
 	return &OrganizationHandler{
-		db: db,
+		db:     db,
+		logger: logger,
 	}
 }
