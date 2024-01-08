@@ -42,7 +42,8 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
 
-	h := handlers.NewFeatureFlagHandler(suite.db)
+	logger, _ := common.NewZapLogger()
+	h := handlers.NewFeatureFlagHandler(suite.db, logger)
 	suite.Server.POST("organization/:organizationID/feature-flag", middlewares.AuthMiddleware(h.PostFeatureFlag))
 	suite.Server.PATCH(
 		"organization/:organizationID/feature-flag/:featureFlagID",

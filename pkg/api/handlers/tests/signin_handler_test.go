@@ -34,8 +34,8 @@ func (suite *SignInHandlerTestSuite) SetupTest() {
 
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
-
-	h := handlers.NewSignInHandler(suite.db)
+	logger, _ := common.NewZapLogger()
+	h := handlers.NewSignInHandler(suite.db, logger)
 	suite.Server.POST("/signin", h.PostSignIn)
 }
 
