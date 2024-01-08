@@ -14,7 +14,7 @@ const (
 
 var Environment string
 
-func ConfigEnvironment() {
+func StartEnvironment() {
 	env := os.Getenv("ENV")
 
 	if env == ProductionEnvironment {

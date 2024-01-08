@@ -16,7 +16,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	config.ConfigEnvironment()
+	config.StartEnvironment()
 
 	storage, err := storage.GetInstance()
 	if err != nil {
