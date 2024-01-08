@@ -548,20 +548,20 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(
+	request := httptest.NewRequest(
 		http.MethodPatch,
 		"/organization/"+organization.ID.Hex()+
 			"/feature-flag/"+featureFlagID.Hex()+
 			"/revision/"+willBeLiveRevision.ID.Hex(),
 		nil,
 	)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	rec := httptest.NewRecorder()
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
+	suite.Server.ServeHTTP(recorder, request)
 
-	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, http.StatusOK, recorder.Code)
 
 	savedFeatureFlag, err := featureFlagModel.FindByID(context.Background(), featureFlagID)
 	assert.NoError(t, err)
@@ -594,23 +594,23 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
 	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(
+	request := httptest.NewRequest(
 		http.MethodPatch,
 		"/organization/"+organization.ID.Hex()+
 			"/feature-flag/"+primitive.NewObjectID().Hex()+
 			"/revision/"+primitive.NewObjectID().Hex(),
 		nil,
 	)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
-	rec := httptest.NewRecorder()
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
 
-	suite.Server.ServeHTTP(rec, req)
+	suite.Server.ServeHTTP(recorder, request)
 
 	var response apierrors.Error
 
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response))
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
 		Message: apierrors.UnauthorizedError,
