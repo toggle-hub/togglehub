@@ -8,7 +8,6 @@ linters:
     - errorlint
     - exhaustive
     - exportloopref
-    - funlen
     - gochecknoinits
     - goconst
     - gocritic

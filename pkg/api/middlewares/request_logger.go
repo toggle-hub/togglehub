@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -39,13 +40,13 @@ func ZapLogger(log *zap.Logger) echo.MiddlewareFunc {
 				zap.Int64("bytes_out", response.Size),
 			}
 
-			n := response.Status
+			status := response.Status
 			switch {
-			case n >= 500:
+			case status >= http.StatusInternalServerError:
 				log.Error("Server error", fields...)
-			case n >= 400:
+			case status >= http.StatusBadRequest:
 				log.Warn("Client error", fields...)
-			case n >= 300:
+			case status >= http.StatusMultipleChoices:
 				log.Info("Redirection", fields...)
 			default:
 				log.Info("Success", fields...)

@@ -24,7 +24,7 @@ type BaseHTTPClient interface {
 type HTTPClient struct{}
 
 func (c *HTTPClient) Get(url string) (*http.Response, error) {
-	return http.Get(url) // nolint
+	return http.Get(url) //nolint
 }
 
 type OAuthClient interface {

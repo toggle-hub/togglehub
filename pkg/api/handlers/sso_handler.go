@@ -34,7 +34,6 @@ func NewSsoHandler(
 	httpClient apiutils.BaseHTTPClient,
 	oauthClient apiutils.OAuthClient,
 ) *SsoHandler {
-
 	return &SsoHandler{
 		oauthConfig: oauthConfig,
 		db:          db,
