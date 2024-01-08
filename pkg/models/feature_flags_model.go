@@ -42,11 +42,12 @@ type Rule struct {
 }
 
 type Revision struct {
-	ID           primitive.ObjectID `json:"_id,omitempty" bson:"_id"`
-	UserID       primitive.ObjectID `json:"user_id" bson:"user_id"`
-	Status       RevisionStatus     `json:"status" bson:"status"`
-	DefaultValue string             `json:"default_value" bson:"default_value"`
-	Rules        []Rule
+	ID             primitive.ObjectID `json:"_id,omitempty" bson:"_id"`
+	UserID         primitive.ObjectID `json:"user_id" bson:"user_id"`
+	Status         RevisionStatus     `json:"status" bson:"status"`
+	DefaultValue   string             `json:"default_value" bson:"default_value"`
+	LastRevisionID primitive.ObjectID `json:"last_revision_id,omitempty" bson:"last_revision_id,omitempty"`
+	Rules          []Rule
 }
 
 type FlagType = string
@@ -87,7 +88,7 @@ func NewFeatureFlagRecord(
 			{
 				ID:           primitive.NewObjectID(),
 				UserID:       userID,
-				Status:       Draft,
+				Status:       Live,
 				DefaultValue: defaultValue,
 				Rules:        rules,
 			},

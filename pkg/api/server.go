@@ -63,10 +63,11 @@ func registerRoutes(app *App) {
 
 	featureFlagHandler := handlers.NewFeatureFlagHandler(app.storage.DB())
 	organizationGroup.POST("/:organizationID/feature-flag", featureFlagHandler.PostFeatureFlag)
-	organizationGroup.PATCH("/:organizationID/feature-flag/featureFlagID", featureFlagHandler.PatchFeatureFlag)
+	organizationGroup.PATCH("/:organizationID/feature-flag/:featureFlagID", featureFlagHandler.PatchFeatureFlag)
 	organizationGroup.GET("/:organizationID/feature-flag", featureFlagHandler.ListFeatureFlags)
 	organizationGroup.PATCH(
-		"/:organizationID/feature-flag/featureFlagID/revision/:revisionID",
+		"/:organizationID/feature-flag/:featureFlagID/revision/:revisionID",
 		featureFlagHandler.ApproveRevision,
 	)
+	organizationGroup.PATCH("/:organizationID/feature-flag/:featureFlagID/rollback", featureFlagHandler.RollbackFeatureFlagVersion)
 }
