@@ -30,7 +30,7 @@ type SsoTestSuite struct {
 
 func (suite *SsoTestSuite) SetupTest() {
 	testCtx := context.Background()
-	if err := godotenv.Load("../../../../.env"); err != nil {
+	if err := godotenv.Load("../../../../.env.test"); err != nil {
 		log.Panic(err)
 	}
 
