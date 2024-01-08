@@ -69,5 +69,8 @@ func registerRoutes(app *App) {
 		"/:organizationID/feature-flag/:featureFlagID/revision/:revisionID",
 		featureFlagHandler.ApproveRevision,
 	)
-	organizationGroup.PATCH("/:organizationID/feature-flag/:featureFlagID/rollback", featureFlagHandler.RollbackFeatureFlagVersion)
+	organizationGroup.PATCH(
+		"/:organizationID/feature-flag/:featureFlagID/rollback",
+		featureFlagHandler.RollbackFeatureFlagVersion,
+	)
 }

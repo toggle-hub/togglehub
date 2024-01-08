@@ -432,5 +432,4 @@ func getIDsFromContext(c echo.Context) (primitive.ObjectID, primitive.ObjectID, 
 	}
 
 	return userID, organizationID, err
-
 }
