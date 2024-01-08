@@ -617,6 +617,48 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
 	}, response)
 }
 
+func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorizedMissingPermission() {
+	t := suite.T()
+
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			unauthorizedUser,
+			models.ReadOnly,
+		),
+	}, suite.db)
+
+	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	assert.NoError(t, err)
+
+	request := httptest.NewRequest(
+		http.MethodPatch,
+		"/organization/"+organization.ID.Hex()+
+			"/feature-flag/"+primitive.NewObjectID().Hex()+
+			"/revision/"+primitive.NewObjectID().Hex(),
+		nil,
+	)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(recorder, request)
+
+	var response apierrors.Error
+
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+	assert.Equal(t, apierrors.Error{
+		Error:   http.StatusText(http.StatusUnauthorized),
+		Message: apierrors.UnauthorizedError,
+	}, response)
+}
+
 func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 	t := suite.T()
 	user := fixtures.CreateUser("", "", "", "", suite.db)
