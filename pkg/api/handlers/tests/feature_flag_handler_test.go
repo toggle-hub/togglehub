@@ -692,31 +692,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 		),
 	}, suite.db)
 
-	rule := models.Rule{
-		Predicate: "attr: rule",
-		Value:     "false",
-		Env:       "dev",
-		IsEnabled: true,
-	}
-	featureFlagRequest := &handlers.PostFeatureFlagRequest{
-		Name:         "cool feature",
-		Type:         models.Boolean,
-		DefaultValue: "false",
-		Rules: []models.Rule{
-			rule,
-		},
-	}
-	featureFlagRecord := models.NewFeatureFlagRecord(
-		featureFlagRequest.Name,
-		featureFlagRequest.DefaultValue,
-		featureFlagRequest.Type,
-		featureFlagRequest.Rules,
-		organization.ID,
-		user.ID,
-	)
-	model := models.NewFeatureFlagModel(suite.db)
-	featureFlagID, err := model.InsertOne(context.Background(), featureFlagRecord)
-	assert.NoError(t, err)
+	revision := fixtures.CreateRevision(user.ID, models.Archived, primitive.NilObjectID)
+	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
+		models.Boolean, []models.Revision{*revision}, suite.db)
 
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -724,7 +702,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 	request := httptest.NewRequest(
 		http.MethodDelete,
 		"/organizations/"+organization.ID.Hex()+
-			"/feature-flags/"+featureFlagID.Hex(),
+			"/feature-flags/"+featureFlagRecord.ID.Hex(),
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -733,15 +711,17 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
+	model := models.NewFeatureFlagModel(suite.db)
+
 	deletedRecord, err := model.FindOne(context.Background(), bson.D{
-		{Key: "_id", Value: featureFlagID},
+		{Key: "_id", Value: featureFlagRecord.ID},
 		{Key: "deleted_at", Value: bson.M{
 			"$exists": true},
 		}})
 
 	assert.NoError(t, err)
 
-	assert.Equal(t, featureFlagID, deletedRecord.ID)
+	assert.Equal(t, featureFlagRecord.ID, deletedRecord.ID)
 
 	assert.Equal(t, http.StatusNoContent, recorder.Code)
 }
@@ -755,32 +735,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 			models.ReadOnly,
 		),
 	}, suite.db)
-
-	rule := models.Rule{
-		Predicate: "attr: rule",
-		Value:     "false",
-		Env:       "dev",
-		IsEnabled: true,
-	}
-	featureFlagRequest := &handlers.PostFeatureFlagRequest{
-		Name:         "cool feature",
-		Type:         models.Boolean,
-		DefaultValue: "false",
-		Rules: []models.Rule{
-			rule,
-		},
-	}
-	featureFlagRecord := models.NewFeatureFlagRecord(
-		featureFlagRequest.Name,
-		featureFlagRequest.DefaultValue,
-		featureFlagRequest.Type,
-		featureFlagRequest.Rules,
-		organization.ID,
-		user.ID,
-	)
-	model := models.NewFeatureFlagModel(suite.db)
-	featureFlagID, err := model.InsertOne(context.Background(), featureFlagRecord)
-	assert.NoError(t, err)
+	revision := fixtures.CreateRevision(user.ID, models.Archived, primitive.NilObjectID)
+	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
+		models.Boolean, []models.Revision{*revision}, suite.db)
 
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -788,7 +745,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 	request := httptest.NewRequest(
 		http.MethodDelete,
 		"/organizations/"+organization.ID.Hex()+
-			"/feature-flags/"+featureFlagID.Hex(),
+			"/feature-flags/"+featureFlagRecord.ID.Hex(),
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)

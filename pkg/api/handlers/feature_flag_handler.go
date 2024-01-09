@@ -273,7 +273,6 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 }
 
 func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
-	ffh.logger.Debug("aaaaaaaaaaaaaaaaaaaaaaa")
 	userID, organizationID, err := getIDsFromContext(c)
 	if err != nil {
 		ffh.logger.Debug("Client error",
@@ -474,28 +473,12 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 }
 
 func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
-	userID, err := apiutils.GetObjectIDFromContext(c)
+	userID, organizationID, err := getIDsFromContext(c)
 	if err != nil {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
-			c,
-			http.StatusUnauthorized,
-			apierrors.UnauthorizedError,
-		)
-	}
-
-	organizationID, err := primitive.ObjectIDFromHex(c.Param("organizationID"))
-	if err != nil {
-		ffh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
-		)
-		return apierrors.CustomError(
-			c,
-			http.StatusBadRequest,
-			apierrors.BadRequestError,
-		)
+		return err
 	}
 
 	organizationModel := models.NewOrganizationModel(ffh.db)
