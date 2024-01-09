@@ -503,12 +503,16 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 	objectID, err := model.UpdateOne(
 		context.Background(),
 		bson.D{{Key: "_id", Value: featureFlagID}},
-		bson.D{{
-			Key: "$set", Value: bson.D{{
-				Key:   "deleted_at",
-				Value: primitive.NewDateTimeFromTime(time.Now().UTC()),
-			}},
-		}},
+		bson.D{
+			{
+				Key: "$set", Value: bson.D{
+					{
+						Key:   "deleted_at",
+						Value: primitive.NewDateTimeFromTime(time.Now().UTC()),
+					},
+				},
+			},
+		},
 	)
 
 	if err != nil {
