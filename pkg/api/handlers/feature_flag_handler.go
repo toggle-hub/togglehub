@@ -508,7 +508,8 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 				Key:   "deleted_at",
 				Value: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			}},
-		}})
+		}},
+	)
 
 	if err != nil {
 		ffh.logger.Debug("Server error",
