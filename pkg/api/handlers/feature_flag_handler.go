@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"time"
 
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/models"
@@ -162,12 +163,12 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Client error",
-			zap.String("cause", apierrors.UnauthorizedError),
+			zap.String("cause", apierrors.ForbiddenError),
 		)
 		return apierrors.CustomError(
 			c,
-			http.StatusUnauthorized,
-			apierrors.UnauthorizedError,
+			http.StatusForbidden,
+			apierrors.ForbiddenError,
 		)
 	}
 
@@ -259,12 +260,12 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Client error",
-			zap.String("cause", apierrors.UnauthorizedError),
+			zap.String("cause", apierrors.ForbiddenError),
 		)
 		return apierrors.CustomError(
 			c,
-			http.StatusUnauthorized,
-			apierrors.UnauthorizedError,
+			http.StatusForbidden,
+			apierrors.ForbiddenError,
 		)
 	}
 
@@ -357,12 +358,12 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Server error",
-			zap.String("cause", apierrors.UnauthorizedError),
+			zap.String("cause", apierrors.ForbiddenError),
 		)
 		return apierrors.CustomError(
 			c,
-			http.StatusUnauthorized,
-			apierrors.UnauthorizedError,
+			http.StatusForbidden,
+			apierrors.ForbiddenError,
 		)
 	}
 
@@ -434,4 +435,92 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, featureFlagRecord)
+}
+
+func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
+	userID, err := apiutils.GetObjectIDFromContext(c)
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return apierrors.CustomError(
+			c,
+			http.StatusUnauthorized,
+			apierrors.UnauthorizedError,
+		)
+	}
+
+	organizationID, err := primitive.ObjectIDFromHex(c.Param("organizationID"))
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return apierrors.CustomError(
+			c,
+			http.StatusBadRequest,
+			apierrors.BadRequestError,
+		)
+	}
+
+	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	if !permission {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", apierrors.ForbiddenError),
+		)
+		return apierrors.CustomError(
+			c,
+			http.StatusForbidden,
+			apierrors.ForbiddenError,
+		)
+	}
+
+	featureFlagID, err := primitive.ObjectIDFromHex(c.Param("featureFlagID"))
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return apierrors.CustomError(
+			c,
+			http.StatusBadRequest,
+			apierrors.BadRequestError,
+		)
+	}
+
+	model := models.NewFeatureFlagModel(ffh.db)
+
+	objectID, err := model.UpdateOne(
+		context.Background(),
+		bson.D{{Key: "_id", Value: featureFlagID}},
+		bson.D{{
+			Key: "$set", Value: bson.D{{
+				Key:   "deleted_at",
+				Value: primitive.NewDateTimeFromTime(time.Now().UTC()),
+			}},
+		}})
+
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()))
+		return apierrors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	ffh.logger.Info("Soft deleted feature flag",
+		zap.String("_id", objectID.Hex()))
+	return c.JSON(http.StatusNoContent, nil)
 }

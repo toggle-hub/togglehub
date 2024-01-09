@@ -126,7 +126,11 @@ func (ffm *FeatureFlagModel) InsertOne(ctx context.Context, record *FeatureFlagR
 
 func (ffm *FeatureFlagModel) FindByID(ctx context.Context, id primitive.ObjectID) (*FeatureFlagRecord, error) {
 	record := new(FeatureFlagRecord)
-	if err := ffm.collection.FindOne(ctx, bson.D{{Key: "_id", Value: id}}).Decode(record); err != nil {
+	if err := ffm.collection.FindOne(ctx, bson.D{
+		{Key: "_id", Value: id},
+		{Key: "deleted_at", Value: bson.M{
+			"$exists": false},
+		}}).Decode(record); err != nil {
 		return nil, err
 	}
 	return record, nil
@@ -145,7 +149,11 @@ func (ffm *FeatureFlagModel) FindMany(
 	findOptions.SetLimit(int64(limit))
 
 	records := make([]FeatureFlagRecord, 0)
-	cursor, err := ffm.collection.Find(ctx, bson.D{{Key: "organization_id", Value: organizationID}}, findOptions)
+	cursor, err := ffm.collection.Find(ctx, bson.D{
+		{Key: "organization_id", Value: organizationID},
+		{Key: "deleted_at", Value: bson.M{
+			"$exists": false},
+		}}, findOptions)
 	if err != nil {
 		return EmptyFeatureRecordList, err
 	}
@@ -165,13 +173,27 @@ func (ffm *FeatureFlagModel) FindMany(
 
 func (ffm *FeatureFlagModel) UpdateOne(
 	ctx context.Context,
-	filters,
+	filter,
 	update bson.D,
 ) (primitive.ObjectID, error) {
-	_, err := ffm.collection.UpdateOne(ctx, filters, update)
+	_, err := ffm.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return primitive.ObjectID{}, err
 	}
 
 	return primitive.NilObjectID, nil
+}
+
+func (ffm *FeatureFlagModel) FindOne(
+	ctx context.Context,
+	filter bson.D,
+) (*FeatureFlagRecord, error) {
+	record := new(FeatureFlagRecord)
+
+	err := ffm.collection.FindOne(ctx, filter).Decode(record)
+	if err != nil {
+		return nil, err
+	}
+
+	return record, nil
 }
