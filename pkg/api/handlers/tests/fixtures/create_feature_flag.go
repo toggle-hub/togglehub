@@ -51,14 +51,14 @@ func CreateFeatureFlag(
 }
 
 func CreateRevision(
-	userId primitive.ObjectID,
+	userID primitive.ObjectID,
 	status models.RevisionStatus,
 	lastRevisionID primitive.ObjectID,
 ) *models.Revision {
 	revisionCounter++
 	return &models.Revision{
 		ID:             primitive.NewObjectID(),
-		UserID:         userId,
+		UserID:         userID,
 		Status:         status,
 		DefaultValue:   fmt.Sprintf("default value %d", revisionCounter),
 		LastRevisionID: lastRevisionID,
