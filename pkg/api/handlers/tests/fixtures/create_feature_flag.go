@@ -50,7 +50,11 @@ func CreateFeatureFlag(
 	return record
 }
 
-func CreateRevision(userId primitive.ObjectID, status models.RevisionStatus, lastRevisionID primitive.ObjectID) *models.Revision {
+func CreateRevision(
+	userId primitive.ObjectID,
+	status models.RevisionStatus,
+	lastRevisionID primitive.ObjectID,
+) *models.Revision {
 	revisionCounter++
 	return &models.Revision{
 		ID:             primitive.NewObjectID(),
