@@ -92,4 +92,8 @@ func registerRoutes(app *App) {
 		featureFlagHandler.ApproveRevision,
 	)
 	organizationGroup.DELETE("/:organizationID/feature-flags/featureFlagID", featureFlagHandler.DeleteFeatureFlag)
+	organizationGroup.PATCH(
+		"/:organizationID/feature-flags/:featureFlagID/rollback",
+		featureFlagHandler.RollbackFeatureFlagVersion,
+	)
 }
