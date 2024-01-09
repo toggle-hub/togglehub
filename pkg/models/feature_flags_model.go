@@ -35,10 +35,11 @@ const (
 )
 
 type Rule struct {
-	Predicate string `json:"predicate" bson:"predicate" validate:"required"`
-	Value     string `json:"value" bson:"value" validate:"required"`
-	Env       string `json:"env" bson:"env" validate:"required"`
-	IsEnabled bool   `json:"is_enabled" bson:"is_enabled" validate:"required,boolean"`
+	ID        primitive.ObjectID `json:"_id" bson:"_id"`
+	Predicate string             `json:"predicate" bson:"predicate" validate:"required"`
+	Value     string             `json:"value" bson:"value" validate:"required"`
+	Env       string             `json:"env" bson:"env" validate:"required"`
+	IsEnabled bool               `json:"is_enabled" bson:"is_enabled" validate:"required,boolean"`
 }
 
 type Revision struct {
@@ -47,6 +48,7 @@ type Revision struct {
 	Status         RevisionStatus     `json:"status" bson:"status"`
 	DefaultValue   string             `json:"default_value" bson:"default_value"`
 	LastRevisionID primitive.ObjectID `json:"last_revision_id,omitempty" bson:"last_revision_id,omitempty"`
+	ChangeSet      string             `json:"change_set,omitempty" bson:"change_set,omitempty"`
 	Rules          []Rule
 }
 
@@ -67,7 +69,14 @@ type FeatureFlagRecord struct {
 	Name           string             `json:"name" bson:"name"`
 	Type           FlagType           `json:"type" bson:"type"`
 	Revisions      []Revision         `json:"revisions" bson:"revisions"`
+	Timeline       string             `json:"timeline" bson:"timeline"`
+	Enviroment     []FeatureFlagEnviroment
 	storage.Timestamps
+}
+
+type FeatureFlagEnviroment struct {
+	Name      string `json:"name" bson:"name"`
+	IsEnabled bool   `json:"is_enabled" bson:"is_enabled"`
 }
 
 func NewFeatureFlagRecord(
