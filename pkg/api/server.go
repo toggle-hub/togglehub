@@ -80,19 +80,20 @@ func registerRoutes(app *App) {
 	userGroup.PATCH("", userHandler.PatchUser)
 
 	organizationHandler := handlers.NewOrganizationHandler(app.storage.DB(), app.logger)
-	organizationGroup := app.server.Group("/organization", middlewares.AuthMiddleware)
+	organizationGroup := app.server.Group("/organizations", middlewares.AuthMiddleware)
 	organizationGroup.POST("", organizationHandler.PostOrganization)
 
 	featureFlagHandler := handlers.NewFeatureFlagHandler(app.storage.DB(), app.logger)
-	organizationGroup.POST("/:organizationID/feature-flag", featureFlagHandler.PostFeatureFlag)
-	organizationGroup.PATCH("/:organizationID/feature-flag/:featureFlagID", featureFlagHandler.PatchFeatureFlag)
-	organizationGroup.GET("/:organizationID/feature-flag", featureFlagHandler.ListFeatureFlags)
+	organizationGroup.POST("/:organizationID/feature-flags", featureFlagHandler.PostFeatureFlag)
+	organizationGroup.PATCH("/:organizationID/feature-flags/featureFlagID", featureFlagHandler.PatchFeatureFlag)
+	organizationGroup.GET("/:organizationID/feature-flags", featureFlagHandler.ListFeatureFlags)
 	organizationGroup.PATCH(
-		"/:organizationID/feature-flag/:featureFlagID/revision/:revisionID",
+		"/:organizationID/feature-flags/featureFlagID/revisions/:revisionID",
 		featureFlagHandler.ApproveRevision,
 	)
+	organizationGroup.DELETE("/:organizationID/feature-flags/featureFlagID", featureFlagHandler.DeleteFeatureFlag)
 	organizationGroup.PATCH(
-		"/:organizationID/feature-flag/:featureFlagID/rollback",
+		"/:organizationID/feature-flags/:featureFlagID/rollback",
 		featureFlagHandler.RollbackFeatureFlagVersion,
 	)
 }

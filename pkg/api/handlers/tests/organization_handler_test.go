@@ -42,7 +42,7 @@ func (suite *OrganizationHandlerTestSuite) SetupTest() {
 	logger, _ := common.NewZapLogger()
 
 	h := handlers.NewOrganizationHandler(suite.db, logger)
-	suite.Server.POST("/organization", middlewares.AuthMiddleware(h.PostOrganization))
+	suite.Server.POST("/organizations", middlewares.AuthMiddleware(h.PostOrganization))
 }
 
 func (suite *OrganizationHandlerTestSuite) AfterTest(_, _ string) {
@@ -72,7 +72,7 @@ func (suite *OrganizationHandlerTestSuite) TestPostOrganizationHandlerSuccess() 
 		"name": "the company"
 	}`)
 
-	request := httptest.NewRequest(http.MethodPost, "/organization", bytes.NewBuffer(requestBody))
+	request := httptest.NewRequest(http.MethodPost, "/organizations", bytes.NewBuffer(requestBody))
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
 	recorder := httptest.NewRecorder()

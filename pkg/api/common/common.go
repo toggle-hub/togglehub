@@ -16,6 +16,8 @@ type Tuple[T comparable, U comparable] struct {
 }
 
 func NewTuple[T comparable, U comparable](first T, second U) Tuple[T, U] {
-	return Tuple[T, U]{First: first,
-		Second: second}
+	return Tuple[T, U]{
+		First:  first,
+		Second: second,
+	}
 }
