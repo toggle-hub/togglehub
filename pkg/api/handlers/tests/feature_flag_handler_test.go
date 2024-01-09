@@ -301,8 +301,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
-	featureFlag1 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1, models.Boolean, nil, suite.db)
-	featureFlag2 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1, models.Boolean, nil, suite.db)
+	featureFlag1 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
+		models.Boolean, nil, suite.db)
+	featureFlag2 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
+		models.Boolean, nil, suite.db)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -343,7 +345,8 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
-	featureFlag := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1, models.Boolean, nil, suite.db)
+	featureFlag := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
+		models.Boolean, nil, suite.db)
 	fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1, models.Boolean, nil, suite.db)
 
 	request := httptest.NewRequest(
@@ -427,7 +430,11 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 	willBeControlRevision := fixtures.CreateRevision(user.ID, models.Draft, primitive.NilObjectID)
 
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		models.Boolean, []models.Revision{*willBeOriginalRevision, *willBeLiveRevision, *willBeControlRevision}, suite.db)
+		models.Boolean, []models.Revision{
+			*willBeOriginalRevision,
+			*willBeLiveRevision,
+			*willBeControlRevision,
+		}, suite.db)
 
 	featureFlagModel := models.NewFeatureFlagModel(suite.db)
 
