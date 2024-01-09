@@ -504,14 +504,12 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 		context.Background(),
 		bson.D{{Key: "_id", Value: featureFlagID}},
 		bson.D{
-			{
-				Key: "$set", Value: bson.D{
-					{
-						Key:   "deleted_at",
-						Value: primitive.NewDateTimeFromTime(time.Now().UTC()),
-					},
+			{Key: "$set", Value: bson.D{
+				{
+					Key:   "deleted_at",
+					Value: primitive.NewDateTimeFromTime(time.Now().UTC()),
 				},
-			},
+			}},
 		},
 	)
 
