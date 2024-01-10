@@ -46,6 +46,12 @@ func CreateFeatureFlag(
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},
+		Environment: []models.FeatureFlagEnvironment{
+			{
+				Name:      environmentName,
+				IsEnabled: true,
+			},
+		},
 	}
 	_, err := model.InsertOne(context.Background(), record)
 	if err != nil {
