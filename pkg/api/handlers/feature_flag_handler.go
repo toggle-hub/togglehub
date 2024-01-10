@@ -34,6 +34,7 @@ type PostFeatureFlagRequest struct {
 	Type         models.FlagType `json:"type" validate:"required,oneof=boolean json string number"`
 	DefaultValue string          `json:"default_value" validate:"required"`
 	Rules        []models.Rule   `json:"rules" validate:"dive,required"`
+	Environment  string          `json:"environment" validate:"required"`
 }
 
 type PatchFeatureFlagRequest struct {
@@ -174,6 +175,7 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		request.Rules,
 		organizationID,
 		userID,
+		request.Environment,
 	)
 
 	_, err = featureFlagModel.InsertOne(context.Background(), featureFlagRecord)

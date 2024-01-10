@@ -20,11 +20,15 @@ func CreateFeatureFlag(
 	version int,
 	flagType models.FlagType,
 	revision []models.Revision,
+	environmentName string,
 	db *mongo.Database,
 ) *models.FeatureFlagRecord {
 	model := models.NewFeatureFlagModel(db)
 	if name == "" {
 		name = "feature"
+	}
+	if environmentName == "" {
+		environmentName = "prod"
 	}
 	if revision == nil {
 		revision = []models.Revision{

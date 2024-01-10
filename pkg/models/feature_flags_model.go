@@ -69,12 +69,12 @@ type FeatureFlagRecord struct {
 	Name           string             `json:"name" bson:"name"`
 	Type           FlagType           `json:"type" bson:"type"`
 	Revisions      []Revision         `json:"revisions" bson:"revisions"`
-	Timeline       string             `json:"timeline" bson:"timeline"`
-	Enviroment     []FeatureFlagEnviroment
+	Timeline       string             `json:"timeline,omitempty" bson:"timeline,omitempty"`
+	Environment    []FeatureFlagEnvironment
 	storage.Timestamps
 }
 
-type FeatureFlagEnviroment struct {
+type FeatureFlagEnvironment struct {
 	Name      string `json:"name" bson:"name"`
 	IsEnabled bool   `json:"is_enabled" bson:"is_enabled"`
 }
@@ -86,6 +86,7 @@ func NewFeatureFlagRecord(
 	rules []Rule,
 	organizationID,
 	userID primitive.ObjectID,
+	environmentName string,
 ) *FeatureFlagRecord {
 	return &FeatureFlagRecord{
 		OrganizationID: organizationID,
@@ -100,6 +101,12 @@ func NewFeatureFlagRecord(
 				Status:       Live,
 				DefaultValue: defaultValue,
 				Rules:        rules,
+			},
+		},
+		Environment: []FeatureFlagEnvironment{
+			{
+				Name:      environmentName,
+				IsEnabled: true,
 			},
 		},
 		Timestamps: storage.Timestamps{
