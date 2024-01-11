@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
+	"github.com/Roll-Play/togglelabs/pkg/logger"
 	"github.com/Roll-Play/togglelabs/pkg/models"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -40,7 +40,7 @@ func (suite *UserHandlerTestSuite) SetupTest() {
 
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
-	logger, _ := common.NewZapLogger()
+	logger, _ := logger.NewZapLogger()
 	h := handlers.NewUserHandler(suite.db, logger)
 	suite.Server.PATCH("/user", middlewares.AuthMiddleware(h.PatchUser))
 }
@@ -73,7 +73,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 	requestBody, err := json.Marshal(patchInfo)
 	assert.NoError(t, err)
 
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 
 	assert.NoError(t, err)
 
@@ -104,7 +104,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
 	requestBody, err := json.Marshal(patchInfo)
 	assert.NoError(t, err)
 
-	token, err := apiutils.CreateJWT(primitive.NewObjectID(), time.Second*120)
+	token, err := api_utils.CreateJWT(primitive.NewObjectID(), time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
@@ -113,13 +113,13 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
-	var response apierrors.Error
+	var response api_errors.Error
 
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, apierrors.Error{
+	assert.Equal(t, api_errors.Error{
 		Error:   http.StatusText(http.StatusNotFound),
-		Message: apierrors.NotFoundError,
+		Message: api_errors.NotFoundError,
 	}, response)
 }
 
@@ -136,7 +136,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields(
 			"email": "new@email.mail"
 		}`)
 
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 	request := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)

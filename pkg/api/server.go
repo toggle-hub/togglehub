@@ -6,7 +6,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/storage"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
@@ -63,8 +63,8 @@ func registerRoutes(app *App) {
 		app.storage.DB(),
 		oauthConfig,
 		app.logger,
-		&apiutils.HTTPClient{},
-		apiutils.NewOAuthClient(oauthConfig),
+		&api_utils.HTTPClient{},
+		api_utils.NewOAuthClient(oauthConfig),
 	)
 	app.server.POST("/oauth", ssoHandler.Signin)
 	app.server.GET("/callback", ssoHandler.Callback)
@@ -80,24 +80,24 @@ func registerRoutes(app *App) {
 	userGroup.PATCH("", userHandler.PatchUser)
 
 	organizationHandler := handlers.NewOrganizationHandler(app.storage.DB(), app.logger)
-	organizationGroup := app.server.Group("/organizations", middlewares.AuthMiddleware)
-	organizationGroup.POST("", organizationHandler.PostOrganization)
+	app.server.POST("/organizations", middlewares.AuthMiddleware(organizationHandler.PostOrganization))
 
 	featureFlagHandler := handlers.NewFeatureFlagHandler(app.storage.DB(), app.logger)
-	organizationGroup.POST("/:organizationID/feature-flags", featureFlagHandler.PostFeatureFlag)
-	organizationGroup.PATCH("/:organizationID/feature-flags/featureFlagID", featureFlagHandler.PatchFeatureFlag)
-	organizationGroup.GET("/:organizationID/feature-flags", featureFlagHandler.ListFeatureFlags)
-	organizationGroup.PATCH(
-		"/:organizationID/feature-flags/featureFlagID/revisions/:revisionID",
+	featureGroup := app.server.Group("/features", middlewares.AuthMiddleware, middlewares.OrganizationMiddleware)
+	featureGroup.POST("", featureFlagHandler.PostFeatureFlag)
+	featureGroup.GET("", featureFlagHandler.ListFeatureFlags)
+	featureGroup.PATCH("/:featureFlagID", featureFlagHandler.PatchFeatureFlag)
+	featureGroup.PATCH(
+		"/:featureFlagID/revisions/:revisionID",
 		featureFlagHandler.ApproveRevision,
 	)
-	organizationGroup.DELETE("/:organizationID/feature-flags/featureFlagID", featureFlagHandler.DeleteFeatureFlag)
-	organizationGroup.PATCH(
-		"/:organizationID/feature-flags/:featureFlagID/rollback",
+	featureGroup.DELETE("/:featureFlagID", featureFlagHandler.DeleteFeatureFlag)
+	featureGroup.PATCH(
+		"/:featureFlagID/rollback",
 		featureFlagHandler.RollbackFeatureFlagVersion,
 	)
-	organizationGroup.PATCH(
-		"/organizations/:organizationID/feature-flags/:featureFlagID/toggle",
+	featureGroup.PATCH(
+		"/:featureFlagID/toggle",
 		featureFlagHandler.ToggleFeatureFlag,
 	)
 }

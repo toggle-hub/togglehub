@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/Roll-Play/togglelabs/pkg/api"
-	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	"github.com/Roll-Play/togglelabs/pkg/config"
+	"github.com/Roll-Play/togglelabs/pkg/logger"
 	"github.com/Roll-Play/togglelabs/pkg/storage"
 	"github.com/joho/godotenv"
 )
@@ -27,7 +27,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	logger, err := common.NewZapLogger()
+	logger, err := logger.GetInstance()
 	if err != nil {
 		log.Panic(err)
 	}
