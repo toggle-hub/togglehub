@@ -127,7 +127,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	assert.Equal(t, user.ID, response.UserID)
 	assert.Equal(t, organization.ID, response.OrganizationID)
 	assert.Equal(t, featureFlagRequest.Type, response.Type)
-	assert.Equal(t, featureFlagRequest.Environment, response.Environment[0].Name)
+	assert.Equal(t, featureFlagRequest.Environment, response.Environments[0].Name)
 
 	assert.NotEmpty(t, response.Revisions)
 	responseRevision := response.Revisions[0]

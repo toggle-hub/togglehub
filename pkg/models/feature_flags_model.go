@@ -69,8 +69,7 @@ type FeatureFlagRecord struct {
 	Name           string             `json:"name" bson:"name"`
 	Type           FlagType           `json:"type" bson:"type"`
 	Revisions      []Revision         `json:"revisions" bson:"revisions"`
-	Timeline       string             `json:"timeline,omitempty" bson:"timeline,omitempty"`
-	Environment    []FeatureFlagEnvironment
+	Environments   []FeatureFlagEnvironment
 	storage.Timestamps
 }
 
@@ -103,7 +102,7 @@ func NewFeatureFlagRecord(
 				Rules:        rules,
 			},
 		},
-		Environment: []FeatureFlagEnvironment{
+		Environments: []FeatureFlagEnvironment{
 			{
 				Name:      environmentName,
 				IsEnabled: true,

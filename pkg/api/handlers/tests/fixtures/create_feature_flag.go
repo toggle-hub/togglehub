@@ -46,7 +46,7 @@ func CreateFeatureFlag(
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},
-		Environment: []models.FeatureFlagEnvironment{
+		Environments: []models.FeatureFlagEnvironment{
 			{
 				Name:      environmentName,
 				IsEnabled: true,
