@@ -1,4 +1,4 @@
-package apiutils
+package api_utils
 
 import (
 	"os"

@@ -16,7 +16,7 @@ type MongoStorage struct {
 }
 
 var lock = &sync.Mutex{}
-var storeSingleton *MongoStorage
+var store *MongoStorage
 
 func newMongoStorage(ctx context.Context) (*MongoStorage, error) {
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("DATABASE_URL")))
@@ -66,17 +66,18 @@ func (ms *MongoStorage) Init() error {
 }
 
 func GetInstance() (*MongoStorage, error) {
-	if storeSingleton != nil {
-		return storeSingleton, nil
+	if store != nil {
+		return store, nil
 	}
 
 	lock.Lock()
 	defer lock.Unlock()
 
-	storeSingleton, err := newMongoStorage(context.Background())
+	newStore, err := newMongoStorage(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	return storeSingleton, nil
+	store = newStore
+	return store, nil
 }

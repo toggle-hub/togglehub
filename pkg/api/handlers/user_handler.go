@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 
-	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/models"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
@@ -47,9 +47,9 @@ func (uh *UserHandler) PatchUser(c echo.Context) error {
 		uh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
@@ -59,34 +59,34 @@ func (uh *UserHandler) PatchUser(c echo.Context) error {
 		uh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
-	userID, err := apiutils.GetObjectIDFromContext(c)
+	userID, err := api_utils.GetUserFromContext(c)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		log.Println(api_utils.HandlerErrorLogMessage(err, c))
 		// Should never happen but better safe than sorry
-		if errors.Is(err, apiutils.ErrNotAuthenticated) {
+		if errors.Is(err, api_utils.ErrNotAuthenticated) {
 			uh.logger.Debug("Client error",
 				zap.String("cause", err.Error()),
 			)
-			return apierrors.CustomError(
+			return api_errors.CustomError(
 				c,
 				http.StatusUnauthorized,
-				apierrors.UnauthorizedError,
+				api_errors.UnauthorizedError,
 			)
 		}
 
 		uh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
@@ -96,9 +96,9 @@ func (uh *UserHandler) PatchUser(c echo.Context) error {
 		uh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusNotFound,
-			apierrors.NotFoundError,
+			api_errors.NotFoundError,
 		)
 	}
 
@@ -115,9 +115,9 @@ func (uh *UserHandler) PatchUser(c echo.Context) error {
 		uh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 

@@ -9,10 +9,11 @@ import (
 	"testing"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/config"
+	"github.com/Roll-Play/togglelabs/pkg/logger"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
@@ -36,7 +37,7 @@ func (suite *SignUpHandlerTestSuite) SetupTest() {
 
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
-	logger, _ := common.NewZapLogger()
+	logger, _ := logger.NewZapLogger()
 	h := handlers.NewSignUpHandler(suite.db, logger)
 	suite.Server.POST("/signup", h.PostUser)
 }
@@ -96,13 +97,13 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
-	var response apierrors.Error
+	var response api_errors.Error
 
 	assert.Equal(t, http.StatusConflict, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, response, apierrors.Error{
+	assert.Equal(t, response, api_errors.Error{
 		Error:   http.StatusText(http.StatusConflict),
-		Message: apierrors.EmailConflictError,
+		Message: api_errors.EmailConflictError,
 	})
 }
 
