@@ -20,11 +20,15 @@ func CreateFeatureFlag(
 	version int,
 	flagType models.FlagType,
 	revision []models.Revision,
+	environmentName string,
 	db *mongo.Database,
 ) *models.FeatureFlagRecord {
 	model := models.NewFeatureFlagModel(db)
 	if name == "" {
 		name = "feature"
+	}
+	if environmentName == "" {
+		environmentName = "prod"
 	}
 	if revision == nil {
 		revision = []models.Revision{
@@ -41,6 +45,12 @@ func CreateFeatureFlag(
 		Timestamps: storage.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
+		},
+		Environments: []models.FeatureFlagEnvironment{
+			{
+				Name:      environmentName,
+				IsEnabled: true,
+			},
 		},
 	}
 	_, err := model.InsertOne(context.Background(), record)
