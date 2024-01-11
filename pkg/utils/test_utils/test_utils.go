@@ -1,4 +1,4 @@
-package testutils
+package test_utils
 
 import (
 	"github.com/labstack/echo/v4"

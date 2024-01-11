@@ -1,4 +1,4 @@
-package apiutils
+package api_utils
 
 import (
 	"context"
@@ -12,10 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/oauth2"
 )
-
-type ContextUser struct {
-	ID primitive.ObjectID
-}
 
 type BaseHTTPClient interface {
 	Get(url string) (*http.Response, error)
@@ -62,22 +58,46 @@ func GetPaginationParams(page, limit string) (int, int) {
 }
 
 var ErrNotAuthenticated = errors.New("user not authenticated")
-var ErrContextUserTypeAssertion = errors.New("unable to assert type of user in context")
+var ErrContextUserTypeAssertion = errors.New("unable to assert type of user id in context")
+var ErrContextOrganizationTypeAssertion = errors.New("unable to assert type of organization id in context")
 var ErrReadPermissionDenied = errors.New("user does not have read permission")
+var ErrNoOrganization = errors.New("organization not set in context")
 
-func GetObjectIDFromContext(c echo.Context) (primitive.ObjectID, error) {
+func GetUserFromContext(c echo.Context) (primitive.ObjectID, error) {
 	ctxUser := c.Get("user")
 	if ctxUser == nil {
 		return primitive.NilObjectID, ErrNotAuthenticated
 	}
 
-	user, ok := c.Get("user").(ContextUser)
-
+	objectIDHex, ok := ctxUser.(string)
 	if !ok {
 		return primitive.NilObjectID, ErrContextUserTypeAssertion
 	}
 
-	return user.ID, nil
+	userID, err := primitive.ObjectIDFromHex(objectIDHex)
+	if err != nil {
+		return primitive.NilObjectID, err
+	}
+	return userID, nil
+}
+
+func GetOrganizationFromContext(c echo.Context) (primitive.ObjectID, error) {
+	ctxOrganization := c.Get("organization")
+	if ctxOrganization == nil {
+		return primitive.NilObjectID, ErrNoOrganization
+	}
+
+	objectIDHex, ok := ctxOrganization.(string)
+	if !ok {
+		return primitive.NilObjectID, ErrContextOrganizationTypeAssertion
+	}
+
+	organizationID, err := primitive.ObjectIDFromHex(objectIDHex)
+	if err != nil {
+		return primitive.NilObjectID, err
+	}
+
+	return organizationID, nil
 }
 
 func HandlerErrorLogMessage(err error, c echo.Context) string {

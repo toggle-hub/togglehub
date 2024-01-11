@@ -9,10 +9,10 @@ import (
 	"os"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
@@ -23,16 +23,16 @@ type SsoHandler struct {
 	oauthConfig *oauth2.Config
 	db          *mongo.Database
 	logger      *zap.Logger
-	httpClient  apiutils.BaseHTTPClient
-	oauthClient apiutils.OAuthClient
+	httpClient  api_utils.BaseHTTPClient
+	oauthClient api_utils.OAuthClient
 }
 
 func NewSsoHandler(
 	db *mongo.Database,
 	oauthConfig *oauth2.Config,
 	logger *zap.Logger,
-	httpClient apiutils.BaseHTTPClient,
-	oauthClient apiutils.OAuthClient,
+	httpClient api_utils.BaseHTTPClient,
+	oauthClient api_utils.OAuthClient,
 ) *SsoHandler {
 	return &SsoHandler{
 		oauthConfig: oauthConfig,
@@ -64,10 +64,10 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 		sh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 	userData := new(models.UserRecord)
@@ -76,25 +76,25 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 		sh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
 	model := models.NewUserModel(sh.db)
 	foundRecord, err := model.FindByEmail(context.Background(), userData.Email)
 	if err == nil {
-		token, err := apiutils.CreateJWT(foundRecord.ID, config.JWTExpireTime)
+		token, err := api_utils.CreateJWT(foundRecord.ID, config.JWTExpireTime)
 		if err != nil {
 			sh.logger.Debug("Server error",
 				zap.String("cause", err.Error()),
 			)
-			return apierrors.CustomError(
+			return api_errors.CustomError(
 				c,
 				http.StatusInternalServerError,
-				apierrors.InternalServerError,
+				api_errors.InternalServerError,
 			)
 		}
 
@@ -112,22 +112,22 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 		sh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
-	token, err := apiutils.CreateJWT(objectID, config.JWTExpireTime)
+	token, err := api_utils.CreateJWT(objectID, config.JWTExpireTime)
 	if err != nil {
 		sh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 

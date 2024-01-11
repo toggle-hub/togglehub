@@ -12,6 +12,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
+	"github.com/Roll-Play/togglelabs/pkg/logger"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/joho/godotenv"
@@ -79,7 +80,7 @@ func (suite *SsoTestSuite) TestSSoHandlerNewUserSuccess() {
 	urlq.Add("code", "code")
 	request.URL.RawQuery = urlq.Encode()
 
-	logger, _ := common.NewZapLogger()
+	logger, _ := logger.NewZapLogger()
 
 	h := handlers.NewSsoHandler(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
 	assert.NotNil(t, h)
@@ -117,7 +118,7 @@ func (suite *SsoTestSuite) TestSSoHandlerExistingUserSuccess() {
 	urlq.Add("code", "code")
 	request.URL.RawQuery = urlq.Encode()
 
-	logger, _ := common.NewZapLogger()
+	logger, _ := logger.NewZapLogger()
 
 	h := handlers.NewSsoHandler(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
 	suite.Server.GET("/callback", h.Callback)

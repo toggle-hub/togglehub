@@ -11,13 +11,14 @@ import (
 	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
+	"github.com/Roll-Play/togglelabs/pkg/logger"
 	"github.com/Roll-Play/togglelabs/pkg/models"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -42,23 +43,23 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
 
-	logger, _ := common.NewZapLogger()
+	logger, _ := logger.NewZapLogger()
 	h := handlers.NewFeatureFlagHandler(suite.db, logger)
 
-	testGroup := suite.Server.Group("", middlewares.AuthMiddleware)
-	testGroup.POST("/organizations/:organizationID/feature-flags", h.PostFeatureFlag)
+	testGroup := suite.Server.Group("", middlewares.AuthMiddleware, middlewares.OrganizationMiddleware)
+	testGroup.POST("/features", h.PostFeatureFlag)
 	testGroup.PATCH(
-		"/organizations/:organizationID/feature-flags/:featureFlagID",
+		"/features/:featureFlagID",
 		h.PatchFeatureFlag,
 	)
-	testGroup.GET("/organizations/:organizationID/feature-flags", h.ListFeatureFlags)
+	testGroup.GET("/features", h.ListFeatureFlags)
 	testGroup.PATCH(
-		"/organizations/:organizationID/feature-flags/:featureFlagID/revisions/:revisionID",
+		"/features/:featureFlagID/revisions/:revisionID",
 		h.ApproveRevision,
 	)
-	testGroup.DELETE("/organizations/:organizationID/feature-flags/:featureFlagID", h.DeleteFeatureFlag)
+	testGroup.DELETE("/features/:featureFlagID", h.DeleteFeatureFlag)
 	testGroup.PATCH(
-		"/organizations/:organizationID/feature-flags/:featureFlagID/rollback",
+		"/features/:featureFlagID/rollback",
 		h.RollbackFeatureFlagVersion,
 	)
 }
@@ -106,16 +107,17 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 		),
 	}, suite.db)
 
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodPost,
-		"/organizations/"+organization.ID.Hex()+"/feature-flags",
+		"/features",
 		bytes.NewBuffer(requestBody),
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
@@ -154,27 +156,28 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 		),
 	}, suite.db)
 
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodPost,
-		"/organizations/"+organization.ID.Hex()+"/feature-flags",
+		"/features",
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response apierrors.Error
+	var response api_errors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, apierrors.Error{
+	assert.Equal(t, api_errors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: apierrors.ForbiddenError,
+		Message: api_errors.ForbiddenError,
 	}, response)
 }
 
@@ -208,16 +211,17 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	requestBody, err := json.Marshal(revisionRule)
 	assert.NoError(t, err)
 
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodPatch,
-		"/organizations/"+organization.ID.Hex()+"/feature-flags/"+featureFlagRecord.ID.Hex(),
+		"/features/"+featureFlagRecord.ID.Hex(),
 		bytes.NewBuffer(requestBody),
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
@@ -270,27 +274,28 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 			models.ReadOnly,
 		),
 	}, suite.db)
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodPatch,
-		"/organizations/"+organization.ID.Hex()+"/feature-flags/"+primitive.NewObjectID().Hex(),
+		"/features/"+primitive.NewObjectID().Hex(),
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response apierrors.Error
+	var response api_errors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, apierrors.Error{
+	assert.Equal(t, api_errors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: apierrors.ForbiddenError,
+		Message: api_errors.ForbiddenError,
 	}, response)
 }
 
@@ -304,7 +309,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 			models.Admin,
 		),
 	}, suite.db)
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	featureFlag1 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
@@ -314,11 +319,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 
 	request := httptest.NewRequest(
 		http.MethodGet,
-		"/organizations/"+organization.ID.Hex()+"/feature-flags",
+		"/features",
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
@@ -348,7 +354,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 			models.Admin,
 		),
 	}, suite.db)
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	featureFlag := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
@@ -358,11 +364,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 
 	request := httptest.NewRequest(
 		http.MethodGet,
-		"/organizations/"+organization.ID.Hex()+"/feature-flags?page=1&page_size=1",
+		"/features?page=1&page_size=1",
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
@@ -398,27 +405,28 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 	userID, err := userModel.InsertOne(context.Background(), user)
 	assert.NoError(t, err)
 
-	token, err := apiutils.CreateJWT(userID, time.Second*120)
+	token, err := api_utils.CreateJWT(userID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
-		"/organizations/"+organization.ID.Hex()+"/feature-flags",
+		"/features",
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response apierrors.Error
+	var response api_errors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, apierrors.Error{
+	assert.Equal(t, api_errors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: apierrors.ForbiddenError,
+		Message: api_errors.ForbiddenError,
 	}, response)
 }
 
@@ -443,18 +451,18 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 			*willBeControlRevision,
 		}, "", suite.db)
 
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodPatch,
-		"/organizations/"+organization.ID.Hex()+
-			"/feature-flags/"+featureFlagRecord.ID.Hex()+
+		"/features/"+featureFlagRecord.ID.Hex()+
 			"/revisions/"+willBeLiveRevision.ID.Hex(),
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
@@ -489,29 +497,29 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
 
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
 
-	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodPatch,
-		"/organizations/"+organization.ID.Hex()+
-			"/feature-flags/"+primitive.NewObjectID().Hex()+
+		"/features/"+primitive.NewObjectID().Hex()+
 			"/revisions/"+primitive.NewObjectID().Hex(),
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response apierrors.Error
+	var response api_errors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
-	assert.Equal(t, apierrors.Error{
+	assert.Equal(t, api_errors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
-		Message: apierrors.UnauthorizedError,
+		Message: api_errors.UnauthorizedError,
 	}, response)
 }
 
@@ -531,29 +539,29 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorizedMissingP
 		),
 	}, suite.db)
 
-	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodPatch,
-		"/organizations/"+organization.ID.Hex()+
-			"/feature-flags/"+primitive.NewObjectID().Hex()+
+		"/features/"+primitive.NewObjectID().Hex()+
 			"/revisions/"+primitive.NewObjectID().Hex(),
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response apierrors.Error
+	var response api_errors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
-	assert.Equal(t, apierrors.Error{
+	assert.Equal(t, api_errors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
-		Message: apierrors.UnauthorizedError,
+		Message: api_errors.UnauthorizedError,
 	}, response)
 }
 
@@ -572,18 +580,18 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		models.Boolean, []models.Revision{*revision, *wrongRevision}, "", suite.db)
 
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodPatch,
-		"/organizations/"+organization.ID.Hex()+
-			"/feature-flags/"+featureFlagRecord.ID.Hex()+
+		"/features/"+featureFlagRecord.ID.Hex()+
 			"/rollback",
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
@@ -617,29 +625,29 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorized() {
 
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
 
-	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodPatch,
-		"/organizations/"+organization.ID.Hex()+
-			"/feature-flags/"+primitive.NewObjectID().Hex()+
+		"/features/"+primitive.NewObjectID().Hex()+
 			"/rollback",
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response apierrors.Error
+	var response api_errors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, apierrors.Error{
+	assert.Equal(t, api_errors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: apierrors.ForbiddenError,
+		Message: api_errors.ForbiddenError,
 	}, response)
 }
 
@@ -659,29 +667,29 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorizedMissingPermiss
 		),
 	}, suite.db)
 
-	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodPatch,
-		"/organizations/"+organization.ID.Hex()+
-			"/feature-flags/"+primitive.NewObjectID().Hex()+
+		"/features/"+primitive.NewObjectID().Hex()+
 			"/rollback",
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response apierrors.Error
+	var response api_errors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, apierrors.Error{
+	assert.Equal(t, api_errors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: apierrors.ForbiddenError,
+		Message: api_errors.ForbiddenError,
 	}, response)
 }
 
@@ -699,17 +707,17 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		models.Boolean, []models.Revision{*revision}, "", suite.db)
 
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodDelete,
-		"/organizations/"+organization.ID.Hex()+
-			"/feature-flags/"+featureFlagRecord.ID.Hex(),
+		"/features/"+featureFlagRecord.ID.Hex(),
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
@@ -742,27 +750,27 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		models.Boolean, []models.Revision{*revision}, "", suite.db)
 
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
 		http.MethodDelete,
-		"/organizations/"+organization.ID.Hex()+
-			"/feature-flags/"+featureFlagRecord.ID.Hex(),
+		"/features/"+featureFlagRecord.ID.Hex(),
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
-	var response apierrors.Error
+	var response api_errors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, apierrors.Error{
+	assert.Equal(t, api_errors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: apierrors.ForbiddenError,
+		Message: api_errors.ForbiddenError,
 	}, response)
 }
 

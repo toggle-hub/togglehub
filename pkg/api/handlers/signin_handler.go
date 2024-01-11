@@ -6,10 +6,10 @@ import (
 	"net/http"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -34,9 +34,9 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 		sh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
@@ -46,9 +46,9 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 		sh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
@@ -59,21 +59,21 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			sh.logger.Debug("Client error",
-				zap.String("cause", apierrors.NotFoundError),
+				zap.String("cause", api_errors.NotFoundError),
 			)
-			return apierrors.CustomError(c,
+			return api_errors.CustomError(c,
 				http.StatusNotFound,
-				apierrors.NotFoundError,
+				api_errors.NotFoundError,
 			)
 		}
 
 		sh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
@@ -81,21 +81,21 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 		sh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusUnauthorized,
-			apierrors.UnauthorizedError,
+			api_errors.UnauthorizedError,
 		)
 	}
 
-	token, err := apiutils.CreateJWT(ur.ID, config.JWTExpireTime)
+	token, err := api_utils.CreateJWT(ur.ID, config.JWTExpireTime)
 	if err != nil {
 		sh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 

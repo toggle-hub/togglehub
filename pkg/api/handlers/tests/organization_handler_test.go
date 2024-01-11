@@ -10,13 +10,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
+	"github.com/Roll-Play/togglelabs/pkg/logger"
 	"github.com/Roll-Play/togglelabs/pkg/models"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +39,7 @@ func (suite *OrganizationHandlerTestSuite) SetupTest() {
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
 
-	logger, _ := common.NewZapLogger()
+	logger, _ := logger.NewZapLogger()
 
 	h := handlers.NewOrganizationHandler(suite.db, logger)
 	suite.Server.POST("/organizations", middlewares.AuthMiddleware(h.PostOrganization))
@@ -65,7 +65,7 @@ func (suite *OrganizationHandlerTestSuite) TestPostOrganizationHandlerSuccess() 
 	model := models.NewOrganizationModel(suite.db)
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	requestBody := []byte(`{
