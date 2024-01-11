@@ -47,7 +47,6 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		})
 
 		if err != nil {
-
 			logger.Debug("Client error",
 				zap.String("cause", err.Error()))
 			return c.JSON(http.StatusUnauthorized, api_errors.Error{
