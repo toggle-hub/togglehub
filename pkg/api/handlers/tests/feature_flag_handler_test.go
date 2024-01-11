@@ -62,6 +62,7 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 		"/features/:featureFlagID/rollback",
 		h.RollbackFeatureFlagVersion,
 	)
+	testGroup.PATCH("/features/:featureFlagID/toggle", h.ToggleFeatureFlag)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) AfterTest(_, _ string) {
@@ -194,7 +195,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 
 	revision := fixtures.CreateRevision(user.ID, models.Live, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		models.Boolean, []models.Revision{*revision}, "", suite.db)
+		models.Boolean, []models.Revision{*revision}, nil, suite.db)
 
 	newRule := models.Rule{
 		Predicate: "attr: newRule",
@@ -313,9 +314,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 	assert.NoError(t, err)
 
 	featureFlag1 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		models.Boolean, nil, "", suite.db)
+		models.Boolean, nil, nil, suite.db)
 	featureFlag2 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
-		models.Boolean, nil, "", suite.db)
+		models.Boolean, nil, nil, suite.db)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -358,9 +359,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 	assert.NoError(t, err)
 
 	featureFlag := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		models.Boolean, nil, "", suite.db)
+		models.Boolean, nil, nil, suite.db)
 	fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
-		models.Boolean, nil, "", suite.db)
+		models.Boolean, nil, nil, suite.db)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -449,7 +450,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 			*willBeOriginalRevision,
 			*willBeLiveRevision,
 			*willBeControlRevision,
-		}, "", suite.db)
+		}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -578,7 +579,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 	revision := fixtures.CreateRevision(user.ID, models.Archived, primitive.NilObjectID)
 	wrongRevision := fixtures.CreateRevision(user.ID, models.Live, revision.ID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		models.Boolean, []models.Revision{*revision, *wrongRevision}, "", suite.db)
+		models.Boolean, []models.Revision{*revision, *wrongRevision}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -705,7 +706,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 
 	revision := fixtures.CreateRevision(user.ID, models.Archived, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		models.Boolean, []models.Revision{*revision}, "", suite.db)
+		models.Boolean, []models.Revision{*revision}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -748,7 +749,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 	}, suite.db)
 	revision := fixtures.CreateRevision(user.ID, models.Archived, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		models.Boolean, []models.Revision{*revision}, "", suite.db)
+		models.Boolean, []models.Revision{*revision}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -764,6 +765,136 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
+	var response api_errors.Error
+
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusForbidden, recorder.Code)
+	assert.Equal(t, api_errors.Error{
+		Error:   http.StatusText(http.StatusForbidden),
+		Message: api_errors.ForbiddenError,
+	}, response)
+}
+
+func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
+	t := suite.T()
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Collaborator,
+		),
+	}, suite.db)
+
+	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
+		models.Boolean, nil, []models.FeatureFlagEnvironment{
+			{
+				Name:      "prod",
+				IsEnabled: true,
+			},
+			{
+				Name:      "dev",
+				IsEnabled: true,
+			},
+		}, suite.db)
+
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	assert.NoError(t, err)
+
+	request := httptest.NewRequest(
+		http.MethodPatch,
+		"/features/"+featureFlagRecord.ID.Hex()+
+			"/toggle?env=prod",
+		nil,
+	)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
+	recorder := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(recorder, request)
+
+	assert.Equal(t, http.StatusOK, recorder.Code)
+
+	featureFlagModel := models.NewFeatureFlagModel(suite.db)
+	savedFeatureFlag, err := featureFlagModel.FindByID(context.Background(), featureFlagRecord.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, featureFlagRecord.Environments[0].Name, savedFeatureFlag.Environments[0].Name)
+	assert.Equal(t, false, savedFeatureFlag.Environments[0].IsEnabled)
+	assert.Equal(t, featureFlagRecord.Environments[1].Name, savedFeatureFlag.Environments[1].Name)
+	assert.Equal(t, featureFlagRecord.Environments[1].IsEnabled, savedFeatureFlag.Environments[1].IsEnabled)
+}
+
+func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleUnauthorized() {
+	t := suite.T()
+
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+	}, suite.db)
+
+	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
+
+	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	assert.NoError(t, err)
+
+	request := httptest.NewRequest(
+		http.MethodPatch,
+		"/features/"+primitive.NewObjectID().Hex()+
+			"/toggle?env=prod",
+		nil,
+	)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
+	recorder := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(recorder, request)
+
+	var response api_errors.Error
+
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusForbidden, recorder.Code)
+	assert.Equal(t, api_errors.Error{
+		Error:   http.StatusText(http.StatusForbidden),
+		Message: api_errors.ForbiddenError,
+	}, response)
+}
+
+func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleMissingPermission() {
+	t := suite.T()
+
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		),
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.ReadOnly,
+		),
+	}, suite.db)
+
+	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	assert.NoError(t, err)
+
+	request := httptest.NewRequest(
+		http.MethodPatch,
+		"/features/"+primitive.NewObjectID().Hex()+
+			"/toggle?env=prod",
+		nil,
+	)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
+	recorder := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(recorder, request)
+
 	var response api_errors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))

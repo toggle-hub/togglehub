@@ -645,3 +645,105 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 		zap.String("_id", objectID.Hex()))
 	return c.JSON(http.StatusNoContent, nil)
 }
+
+func (ffh *FeatureFlagHandler) ToggleFeatureFlag(c echo.Context) error {
+	userID, err := api_utils.GetUserFromContext(c)
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationID, err := api_utils.GetOrganizationFromContext(c)
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	if !permission {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", api_errors.ForbiddenError),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusForbidden,
+			api_errors.ForbiddenError,
+		)
+	}
+
+	featureFlagID, err := primitive.ObjectIDFromHex(c.Param("featureFlagID"))
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	model := models.NewFeatureFlagModel(ffh.db)
+	featureFlagRecord, err := model.FindByID(context.Background(), featureFlagID)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
+	environmentName := c.QueryParams().Get("env")
+	for index, environment := range featureFlagRecord.Environments {
+		if environment.Name == environmentName {
+			featureFlagRecord.Environments[index].IsEnabled = !(featureFlagRecord.Environments[index].IsEnabled)
+		}
+	}
+
+	filters := bson.D{{Key: "_id", Value: featureFlagID}}
+	newValues := bson.D{
+		{
+			Key: "$set", Value: bson.D{
+				{Key: "environments", Value: featureFlagRecord.Environments},
+			},
+		},
+	}
+	_, err = model.UpdateOne(context.Background(), filters, newValues)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
+	return c.JSON(http.StatusOK, featureFlagRecord)
+}
