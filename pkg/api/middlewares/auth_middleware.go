@@ -38,7 +38,6 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			secretKey := []byte("your-secret-key")
 
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-
 				logger.Debug("Client error",
 					zap.String("cause", ErrInvalidSignMethod.Error()))
 				return nil, ErrInvalidSignMethod
