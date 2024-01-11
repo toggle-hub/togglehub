@@ -549,6 +549,92 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 	return c.JSON(http.StatusNoContent, nil)
 }
 
+func (ffh *FeatureFlagHandler) ToggleFeatureFlag(c echo.Context) error {
+	userID, organizationID, err := getIDsFromContext(c)
+	if err != nil {
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
+		return err
+	}
+
+	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	if !permission {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", apierrors.ForbiddenError),
+		)
+		return apierrors.CustomError(
+			c,
+			http.StatusForbidden,
+			apierrors.ForbiddenError,
+		)
+	}
+
+	featureFlagID, err := primitive.ObjectIDFromHex(c.Param("featureFlagID"))
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return apierrors.CustomError(
+			c,
+			http.StatusBadRequest,
+			apierrors.BadRequestError,
+		)
+	}
+
+	model := models.NewFeatureFlagModel(ffh.db)
+	featureFlagRecord, err := model.FindByID(context.Background(), featureFlagID)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return apierrors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	environmentName := c.QueryParams().Get("env")
+	for index, environment := range featureFlagRecord.Environments {
+		if environment.Name == environmentName {
+			featureFlagRecord.Environments[index].IsEnabled = !(featureFlagRecord.Environments[index].IsEnabled)
+		}
+	}
+	log.Print(environmentName)
+
+	filters := bson.D{{Key: "_id", Value: featureFlagID}}
+	newValues := bson.D{
+		{
+			Key: "$set", Value: bson.D{
+				{Key: "environment", Value: featureFlagRecord.Environments},
+			},
+		},
+	}
+	_, err = model.UpdateOne(context.Background(), filters, newValues)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	return c.JSON(http.StatusOK, featureFlagRecord)
+}
+
 func getIDsFromContext(c echo.Context) (primitive.ObjectID, primitive.ObjectID, error) {
 	userID, err := apiutils.GetObjectIDFromContext(c)
 	if err != nil {

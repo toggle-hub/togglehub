@@ -96,4 +96,8 @@ func registerRoutes(app *App) {
 		"/:organizationID/feature-flags/:featureFlagID/rollback",
 		featureFlagHandler.RollbackFeatureFlagVersion,
 	)
+	organizationGroup.PATCH(
+		"/organizations/:organizationID/feature-flags/:featureFlagID/toggle",
+		featureFlagHandler.ToggleFeatureFlag,
+	)
 }
