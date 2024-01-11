@@ -2,13 +2,12 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
-	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/models"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
@@ -52,14 +51,30 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 	pageQuery := c.QueryParam("page")
 	limitQuery := c.QueryParam("page_size")
 
-	page, limit := apiutils.GetPaginationParams(pageQuery, limitQuery)
+	page, limit := api_utils.GetPaginationParams(pageQuery, limitQuery)
 
-	userID, organizationID, err := getIDsFromContext(c)
+	userID, err := api_utils.GetUserFromContext(c)
 	if err != nil {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return err
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationID, err := api_utils.GetOrganizationFromContext(c)
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
 	}
 
 	organizationModel := models.NewOrganizationModel(ffh.db)
@@ -68,22 +83,22 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
-	permission := apiutils.UserHasPermission(userID, organization, models.ReadOnly)
+	permission := api_utils.UserHasPermission(userID, organization, models.ReadOnly)
 	if !permission {
 		ffh.logger.Debug("Client error",
-			zap.String("cause", apierrors.ForbiddenError),
+			zap.String("cause", api_errors.ForbiddenError),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusForbidden,
-			apierrors.ForbiddenError,
+			api_errors.ForbiddenError,
 		)
 	}
 
@@ -94,10 +109,10 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
@@ -110,12 +125,28 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 }
 
 func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
-	userID, organizationID, err := getIDsFromContext(c)
+	userID, err := api_utils.GetUserFromContext(c)
 	if err != nil {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return err
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationID, err := api_utils.GetOrganizationFromContext(c)
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
 	}
 
 	organizationModel := models.NewOrganizationModel(ffh.db)
@@ -124,21 +155,21 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
-	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Client error",
-			zap.String("cause", apierrors.ForbiddenError),
+			zap.String("cause", api_errors.ForbiddenError),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusForbidden,
-			apierrors.ForbiddenError,
+			api_errors.ForbiddenError,
 		)
 	}
 
@@ -147,10 +178,10 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
@@ -160,9 +191,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
@@ -181,9 +212,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
@@ -191,12 +222,28 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 }
 
 func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
-	userID, organizationID, err := getIDsFromContext(c)
+	userID, err := api_utils.GetUserFromContext(c)
 	if err != nil {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return err
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationID, err := api_utils.GetOrganizationFromContext(c)
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
 	}
 
 	organizationModel := models.NewOrganizationModel(ffh.db)
@@ -205,21 +252,21 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
-	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Client error",
-			zap.String("cause", apierrors.ForbiddenError),
+			zap.String("cause", api_errors.ForbiddenError),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusForbidden,
-			apierrors.ForbiddenError,
+			api_errors.ForbiddenError,
 		)
 	}
 
@@ -228,10 +275,10 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
@@ -240,10 +287,10 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
@@ -263,9 +310,9 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
@@ -273,12 +320,28 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 }
 
 func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
-	userID, organizationID, err := getIDsFromContext(c)
+	userID, err := api_utils.GetUserFromContext(c)
 	if err != nil {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return err
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationID, err := api_utils.GetOrganizationFromContext(c)
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
 	}
 
 	organizationModel := models.NewOrganizationModel(ffh.db)
@@ -287,21 +350,21 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
-	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Server error",
-			zap.String("cause", apierrors.UnauthorizedError),
+			zap.String("cause", api_errors.UnauthorizedError),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusUnauthorized,
-			apierrors.UnauthorizedError,
+			api_errors.UnauthorizedError,
 		)
 	}
 
@@ -310,10 +373,10 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
@@ -322,10 +385,10 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
@@ -335,10 +398,10 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
@@ -369,9 +432,9 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
@@ -379,10 +442,28 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 }
 
 func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error {
-	userID, organizationID, err := getIDsFromContext(c)
+	userID, err := api_utils.GetUserFromContext(c)
 	if err != nil {
-		log.Println(apiutils.HandlerErrorLogMessage(err, c))
-		return err
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationID, err := api_utils.GetOrganizationFromContext(c)
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
 	}
 
 	organizationModel := models.NewOrganizationModel(ffh.db)
@@ -391,21 +472,21 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
-	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Server error",
-			zap.String("cause", apierrors.ForbiddenError),
+			zap.String("cause", api_errors.ForbiddenError),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusForbidden,
-			apierrors.ForbiddenError,
+			api_errors.ForbiddenError,
 		)
 	}
 
@@ -414,10 +495,10 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
@@ -427,10 +508,10 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
@@ -463,9 +544,9 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
@@ -473,12 +554,28 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 }
 
 func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
-	userID, organizationID, err := getIDsFromContext(c)
+	userID, err := api_utils.GetUserFromContext(c)
 	if err != nil {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return err
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationID, err := api_utils.GetOrganizationFromContext(c)
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
 	}
 
 	organizationModel := models.NewOrganizationModel(ffh.db)
@@ -487,21 +584,21 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
-	permission := apiutils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Server error",
-			zap.String("cause", apierrors.ForbiddenError),
+			zap.String("cause", api_errors.ForbiddenError),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusForbidden,
-			apierrors.ForbiddenError,
+			api_errors.ForbiddenError,
 		)
 	}
 
@@ -510,10 +607,10 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
@@ -535,36 +632,14 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 	if err != nil {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()))
-		return apierrors.CustomError(
+		return api_errors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
 	ffh.logger.Info("Soft deleted feature flag",
 		zap.String("_id", objectID.Hex()))
 	return c.JSON(http.StatusNoContent, nil)
-}
-
-func getIDsFromContext(c echo.Context) (primitive.ObjectID, primitive.ObjectID, error) {
-	userID, err := apiutils.GetObjectIDFromContext(c)
-	if err != nil {
-		return primitive.NilObjectID, primitive.NilObjectID, apierrors.CustomError(
-			c,
-			http.StatusUnauthorized,
-			apierrors.UnauthorizedError,
-		)
-	}
-
-	organizationID, err := primitive.ObjectIDFromHex(c.Param("organizationID"))
-	if err != nil {
-		return primitive.NilObjectID, primitive.NilObjectID, apierrors.CustomError(
-			c,
-			http.StatusBadRequest,
-			apierrors.BadRequestError,
-		)
-	}
-
-	return userID, organizationID, err
 }

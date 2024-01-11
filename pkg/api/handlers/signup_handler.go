@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/models"
-	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -38,9 +38,9 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		sh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
@@ -50,9 +50,9 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		sh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusBadRequest,
-			apierrors.BadRequestError,
+			api_errors.BadRequestError,
 		)
 	}
 
@@ -60,11 +60,11 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	_, err := model.FindByEmail(context.Background(), request.Email)
 	if err == nil {
 		sh.logger.Debug("Client error",
-			zap.String("cause", apierrors.EmailConflictError),
+			zap.String("cause", api_errors.EmailConflictError),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusConflict,
-			apierrors.EmailConflictError,
+			api_errors.EmailConflictError,
 		)
 	}
 
@@ -73,9 +73,9 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		sh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
@@ -84,20 +84,20 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		sh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 
-	token, err := apiutils.CreateJWT(objectID, config.JWTExpireTime)
+	token, err := api_utils.CreateJWT(objectID, config.JWTExpireTime)
 	if err != nil {
 		sh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return apierrors.CustomError(c,
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
-			apierrors.InternalServerError,
+			api_errors.InternalServerError,
 		)
 	}
 	sh.logger.Debug("Created user",
