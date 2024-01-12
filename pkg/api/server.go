@@ -66,7 +66,7 @@ func registerRoutes(app *App) {
 		&api_utils.HTTPClient{},
 		api_utils.NewOAuthClient(oauthConfig),
 	)
-	app.server.POST("/oauth", ssoHandler.Signin)
+	app.server.POST("/oauth", ssoHandler.SignIn)
 	app.server.GET("/callback", ssoHandler.Callback)
 
 	signUpHandler := handlers.NewSignUpHandler(app.storage.DB(), app.logger)
@@ -77,6 +77,7 @@ func registerRoutes(app *App) {
 
 	userHandler := handlers.NewUserHandler(app.storage.DB(), app.logger)
 	userGroup := app.server.Group("/user", middlewares.AuthMiddleware)
+	userGroup.GET("", userHandler.GetUser)
 	userGroup.PATCH("", userHandler.PatchUser)
 
 	organizationHandler := handlers.NewOrganizationHandler(app.storage.DB(), app.logger)

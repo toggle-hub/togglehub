@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
@@ -42,7 +43,9 @@ func (suite *UserHandlerTestSuite) SetupTest() {
 	suite.Server = echo.New()
 	logger, _ := logger.NewZapLogger()
 	h := handlers.NewUserHandler(suite.db, logger)
-	suite.Server.PATCH("/user", middlewares.AuthMiddleware(h.PatchUser))
+	testGroup := suite.Server.Group("/user", middlewares.AuthMiddleware)
+	testGroup.PATCH("", h.PatchUser)
+	testGroup.GET("", h.GetUser)
 }
 
 func (suite *UserHandlerTestSuite) AfterTest(_, _ string) {
@@ -57,6 +60,46 @@ func (suite *UserHandlerTestSuite) TearDownSuite() {
 	}
 
 	suite.Server.Close()
+}
+
+func (suite *UserHandlerTestSuite) TestUserGetHandlerUnauthorized() {
+	t := suite.T()
+
+	request := httptest.NewRequest(http.MethodGet, "/user", nil)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	recorder := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(recorder, request)
+
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+}
+
+func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
+	t := suite.T()
+
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
+		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+			user,
+			models.Admin,
+		)}, suite.db)
+
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	assert.NoError(t, err)
+
+	request := httptest.NewRequest(http.MethodGet, "/user", nil)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	recorder := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(recorder, request)
+	response := new(handlers.UserGetResponse)
+
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), response))
+	assert.Equal(t, handlers.NewUserGetResponse(user, []models.OrganizationRecord{
+		*organization,
+	}), response)
 }
 
 func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {

@@ -50,6 +50,40 @@ func (om *OrganizationModel) InsertOne(ctx context.Context, record *Organization
 	return objectID, nil
 }
 
+var EmptyOrganizationRecordList = []OrganizationRecord{}
+
+func (om *OrganizationModel) FindMany(
+	ctx context.Context,
+	filter bson.D,
+) ([]OrganizationRecord, error) {
+	records := make([]OrganizationRecord, 0)
+	cursor, err := om.collection.Find(ctx, filter)
+	if err != nil {
+		return EmptyOrganizationRecordList, err
+	}
+
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		record := new(OrganizationRecord)
+		if err := cursor.Decode(record); err != nil {
+			return EmptyOrganizationRecordList, err
+		}
+
+		records = append(records, *record)
+	}
+
+	return records, nil
+}
+
+func (om *OrganizationModel) FindByMember(
+	ctx context.Context,
+	memberID primitive.ObjectID,
+) ([]OrganizationRecord, error) {
+	return om.FindMany(ctx, bson.D{
+		{Key: "members.user._id", Value: memberID}})
+}
+
 type PermissionLevelEnum = string
 
 const (
