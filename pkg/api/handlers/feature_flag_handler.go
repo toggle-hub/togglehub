@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -209,7 +210,39 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		request.Environment,
 	)
 
-	_, err = featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
+	featureFlagID, err := featureFlagModel.InsertOne(context.Background(), featureFlagRecord)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
+	timelineModel := models.NewTimelineModel(ffh.db)
+	_, err = timelineModel.InsertOne(context.Background(),
+		&models.TimelineRecord{
+			FeatureFlagID: featureFlagID,
+			Entries:       []models.TimelineEntry{},
+		})
+	if err != nil {
+		ffh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	timelineEntry := models.NewTimelineEntry(
+		userID,
+		models.Created,
+	)
+	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
@@ -296,18 +329,31 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	model := models.NewFeatureFlagModel(ffh.db)
+	featureFlagModel := models.NewFeatureFlagModel(ffh.db)
 
 	revision := models.NewRevisionRecord(
 		request.DefaultValue,
 		request.Rules,
 		userID,
 	)
-	_, err = model.UpdateOne(
+	_, err = featureFlagModel.UpdateOne(
 		context.Background(),
 		bson.D{{Key: "_id", Value: featureFlagID}},
 		bson.D{{Key: "$push", Value: bson.M{"revisions": revision}}},
 	)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
+	timelineModel := models.NewTimelineModel(ffh.db)
+	timelineEntry := models.NewTimelineEntry(userID, models.RevisionCreated)
+	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
@@ -440,6 +486,19 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		)
 	}
 
+	timelineModel := models.NewTimelineModel(ffh.db)
+	timelineEntry := models.NewTimelineEntry(userID, models.RevisionApproved)
+	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
 	return c.JSON(http.StatusOK, featureFlagRecord)
 }
 
@@ -551,6 +610,18 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 			api_errors.InternalServerError,
 		)
 	}
+	timelineModel := models.NewTimelineModel(ffh.db)
+	timelineEntry := models.NewTimelineEntry(userID, models.FeatureFlagRollback)
+	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
 
 	return c.JSON(http.StatusOK, featureFlagRecord)
 }
@@ -636,6 +707,19 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 			zap.String("cause", err.Error()))
 		return api_errors.CustomError(
 			c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
+	timelineModel := models.NewTimelineModel(ffh.db)
+	timelineEntry := models.NewTimelineEntry(userID, models.FeatureFlagDeleted)
+	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(c,
 			http.StatusInternalServerError,
 			api_errors.InternalServerError,
 		)
@@ -735,6 +819,19 @@ func (ffh *FeatureFlagHandler) ToggleFeatureFlag(c echo.Context) error {
 		},
 	}
 	_, err = model.UpdateOne(context.Background(), filters, newValues)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
+	timelineModel := models.NewTimelineModel(ffh.db)
+	timelineEntry := models.NewTimelineEntry(userID, fmt.Sprintf(models.FeatureFlagToggle, environmentName))
+	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
