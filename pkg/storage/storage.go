@@ -42,15 +42,19 @@ func (ms *MongoStorage) Init() error {
 	ms.init = true
 	indexes := []struct {
 		collection string
-		field      string
 		opts       mongo.IndexModel
 	}{
 		{
 			collection: "user",
-			field:      "email",
 			opts: mongo.IndexModel{
 				Keys:    bson.D{{Key: "email", Value: 1}},
 				Options: options.Index().SetUnique(true),
+			},
+		},
+		{
+			collection: "organization",
+			opts: mongo.IndexModel{
+				Keys: bson.D{{Key: "members.user._id", Value: 1}},
 			},
 		},
 	}

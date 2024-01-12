@@ -43,7 +43,7 @@ func NewSsoHandler(
 	}
 }
 
-func (sh *SsoHandler) Signin(c echo.Context) error {
+func (sh *SsoHandler) SignIn(c echo.Context) error {
 	randomString := os.Getenv("OAUTH_RANDOM_STRING")
 
 	if randomString == "" {
