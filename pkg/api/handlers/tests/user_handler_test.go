@@ -62,7 +62,7 @@ func (suite *UserHandlerTestSuite) TearDownSuite() {
 	suite.Server.Close()
 }
 
-func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
+func (suite *UserHandlerTestSuite) TestUserGetHandlerUnauthorized() {
 	t := suite.T()
 
 	request := httptest.NewRequest(http.MethodGet, "/user", nil)
@@ -74,7 +74,7 @@ func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
 
-func (suite *UserHandlerTestSuite) TestUserGetHandlerUnauthorized() {
+func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
