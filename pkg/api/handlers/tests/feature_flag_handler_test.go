@@ -144,6 +144,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	assert.Equal(t, rule.Value, responseRule.Value)
 	assert.Equal(t, rule.Env, responseRule.Env)
 	assert.Equal(t, rule.IsEnabled, responseRule.IsEnabled)
+
+	timelineModel := models.NewTimelineModel(suite.db)
+	timelineRecord, err := timelineModel.FindByID(context.Background(), response.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(timelineRecord.Entries))
+	assert.Equal(t, models.Created, timelineRecord.Entries[0].Action)
+	assert.Equal(t, user.ID, timelineRecord.Entries[0].UserID)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
@@ -209,6 +216,15 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 			newRule,
 		},
 	}
+
+	timelineModel := models.NewTimelineModel(suite.db)
+	timelineRecord := &models.TimelineRecord{
+		FeatureFlagID: featureFlagRecord.ID,
+		Entries:       []models.TimelineEntry{},
+	}
+	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
+	assert.NoError(t, err)
+
 	requestBody, err := json.Marshal(revisionRule)
 	assert.NoError(t, err)
 
@@ -263,6 +279,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	assert.Equal(t, newRule.Value, newSavedRule.Value)
 	assert.Equal(t, newRule.Env, newSavedRule.Env)
 	assert.Equal(t, newRule.IsEnabled, newSavedRule.IsEnabled)
+
+	savedTimeline, err := timelineModel.FindByID(context.Background(), featureFlagRecord.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(savedTimeline.Entries))
+	assert.Equal(t, models.RevisionCreated, savedTimeline.Entries[0].Action)
+	assert.Equal(t, user.ID, savedTimeline.Entries[0].UserID)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
@@ -452,6 +474,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 			*willBeControlRevision,
 		}, nil, suite.db)
 
+	timelineModel := models.NewTimelineModel(suite.db)
+	timelineRecord := &models.TimelineRecord{
+		FeatureFlagID: featureFlagRecord.ID,
+		Entries:       []models.TimelineEntry{},
+	}
+	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
+	assert.NoError(t, err)
+
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
@@ -483,6 +513,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 	assert.Equal(t, models.Live, updatedRevision.Status)
 	controlRevision := savedRevisions[2]
 	assert.Equal(t, models.Draft, controlRevision.Status)
+
+	savedTimeline, err := timelineModel.FindByID(context.Background(), featureFlagRecord.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(savedTimeline.Entries))
+	assert.Equal(t, models.RevisionApproved, savedTimeline.Entries[0].Action)
+	assert.Equal(t, user.ID, savedTimeline.Entries[0].UserID)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
@@ -581,6 +617,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		models.Boolean, []models.Revision{*revision, *wrongRevision}, nil, suite.db)
 
+	timelineModel := models.NewTimelineModel(suite.db)
+	timelineRecord := &models.TimelineRecord{
+		FeatureFlagID: featureFlagRecord.ID,
+		Entries:       []models.TimelineEntry{},
+	}
+	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
+	assert.NoError(t, err)
+
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
@@ -611,6 +655,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 	assert.Equal(t, models.Live, liveRevision.Status)
 	rolledBackRevision := savedRevisions[1]
 	assert.Equal(t, models.Draft, rolledBackRevision.Status)
+
+	savedTimeline, err := timelineModel.FindByID(context.Background(), featureFlagRecord.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(savedTimeline.Entries))
+	assert.Equal(t, models.FeatureFlagRollback, savedTimeline.Entries[0].Action)
+	assert.Equal(t, user.ID, savedTimeline.Entries[0].UserID)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorized() {
@@ -708,6 +758,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		models.Boolean, []models.Revision{*revision}, nil, suite.db)
 
+	timelineModel := models.NewTimelineModel(suite.db)
+	timelineRecord := &models.TimelineRecord{
+		FeatureFlagID: featureFlagRecord.ID,
+		Entries:       []models.TimelineEntry{},
+	}
+	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
+	assert.NoError(t, err)
+
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
@@ -734,8 +792,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 	assert.NoError(t, err)
 
 	assert.Equal(t, featureFlagRecord.ID, deletedRecord.ID)
-
 	assert.Equal(t, http.StatusNoContent, recorder.Code)
+
+	savedTimeline, err := timelineModel.FindByID(context.Background(), featureFlagRecord.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(savedTimeline.Entries))
+	assert.Equal(t, models.FeatureFlagDeleted, savedTimeline.Entries[0].Action)
+	assert.Equal(t, user.ID, savedTimeline.Entries[0].UserID)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
@@ -797,6 +860,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 			},
 		}, suite.db)
 
+	timelineModel := models.NewTimelineModel(suite.db)
+	timelineRecord := &models.TimelineRecord{
+		FeatureFlagID: featureFlagRecord.ID,
+		Entries:       []models.TimelineEntry{},
+	}
+	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
+	assert.NoError(t, err)
+
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
@@ -822,6 +893,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 	assert.Equal(t, false, savedFeatureFlag.Environments[0].IsEnabled)
 	assert.Equal(t, featureFlagRecord.Environments[1].Name, savedFeatureFlag.Environments[1].Name)
 	assert.Equal(t, featureFlagRecord.Environments[1].IsEnabled, savedFeatureFlag.Environments[1].IsEnabled)
+
+	savedTimeline, err := timelineModel.FindByID(context.Background(), featureFlagRecord.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(savedTimeline.Entries))
+	assert.Equal(t, fmt.Sprintf(models.FeatureFlagToggle, "prod"), savedTimeline.Entries[0].Action)
+	assert.Equal(t, user.ID, savedTimeline.Entries[0].UserID)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleUnauthorized() {
