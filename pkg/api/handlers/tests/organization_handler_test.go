@@ -144,7 +144,7 @@ func (suite *OrganizationHandlerTestSuite) TestPostProjectHandlerSuccess() {
 	assert.Equal(t, newProject.Project.Description, savedProject.Description)
 }
 
-func (suite *FeatureFlagHandlerTestSuite) TestPostProjectUnauthorized() {
+func (suite *OrganizationHandlerTestSuite) TestPostProjectUnauthorized() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
@@ -155,7 +155,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostProjectUnauthorized() {
 			models.Admin,
 		),
 		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
-			user,
+			unauthorizedUser,
 			models.ReadOnly,
 		),
 	}, suite.db)

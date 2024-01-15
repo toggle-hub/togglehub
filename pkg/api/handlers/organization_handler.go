@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
@@ -114,7 +113,6 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 }
 
 func (oh *OrganizationHandler) PostProject(c echo.Context) error {
-	log.Print("AAAAAAAAAAAA")
 	userID, err := api_utils.GetUserFromContext(c)
 	if err != nil {
 		oh.logger.Debug("Client error",
@@ -126,7 +124,6 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 			api_errors.BadRequestError,
 		)
 	}
-	log.Print("BBBBBBBBBBBBBBB")
 
 	organizationID, err := api_utils.GetOrganizationFromContext(c)
 	if err != nil {
@@ -150,7 +147,6 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 			api_errors.InternalServerError,
 		)
 	}
-	log.Print("CCCCCCCCCCCCCCCCCCC")
 
 	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
 	if !permission {
@@ -163,7 +159,6 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 			api_errors.ForbiddenError,
 		)
 	}
-	log.Print("DDDDDDDDDDDDDDDDDD")
 
 	request := new(ProjectPostRequest)
 	if err := c.Bind(request); err != nil {
