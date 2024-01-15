@@ -70,6 +70,7 @@ type FeatureFlagRecord struct {
 	Type           FlagType           `json:"type" bson:"type"`
 	Revisions      []Revision         `json:"revisions" bson:"revisions"`
 	Environments   []FeatureFlagEnvironment
+	Project        string `json:"omitempty" bson:"omitempty"`
 	storage.Timestamps
 }
 
@@ -85,7 +86,8 @@ func NewFeatureFlagRecord(
 	rules []Rule,
 	organizationID,
 	userID primitive.ObjectID,
-	environmentName string,
+	environmentName,
+	projectName string,
 ) *FeatureFlagRecord {
 	return &FeatureFlagRecord{
 		OrganizationID: organizationID,
@@ -108,6 +110,7 @@ func NewFeatureFlagRecord(
 				IsEnabled: true,
 			},
 		},
+		Project: projectName,
 		Timestamps: storage.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
@@ -191,13 +194,13 @@ func (ffm *FeatureFlagModel) UpdateOne(
 	ctx context.Context,
 	filter,
 	update bson.D,
-) (primitive.ObjectID, error) {
+) error {
 	_, err := ffm.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return primitive.ObjectID{}, err
+		return err
 	}
 
-	return primitive.NilObjectID, nil
+	return nil
 }
 
 func (ffm *FeatureFlagModel) FindOne(
