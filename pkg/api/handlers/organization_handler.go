@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
@@ -25,7 +26,8 @@ type OrganizationPostRequest struct {
 }
 
 type ProjectPostRequest struct {
-	Project models.Project
+	Name        string `json:"name" validate:"required"`
+	Description string `json:"description" validate:"required"`
 }
 
 func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
@@ -161,6 +163,7 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 	}
 
 	request := new(ProjectPostRequest)
+	log.Print("A")
 	if err := c.Bind(request); err != nil {
 		oh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
@@ -172,10 +175,15 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 		)
 	}
 
+	project := models.Project{
+		Name:        request.Name,
+		Description: request.Description,
+	}
+
 	err = organizationModel.UpdateOne(
 		context.Background(),
 		bson.D{{Key: "_id", Value: organizationID}},
-		bson.D{{Key: "$push", Value: bson.M{"projects": request.Project}}},
+		bson.D{{Key: "$push", Value: bson.M{"projects": project}}},
 	)
 	if err != nil {
 		oh.logger.Debug("Server error",
@@ -187,7 +195,7 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 		)
 	}
 
-	return c.JSON(http.StatusOK, request.Project)
+	return c.JSON(http.StatusOK, project)
 }
 
 func NewOrganizationHandler(db *mongo.Database, logger *zap.Logger) *OrganizationHandler {

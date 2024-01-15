@@ -108,10 +108,8 @@ func (suite *OrganizationHandlerTestSuite) TestPostProjectHandlerSuccess() {
 	}, suite.db)
 
 	newProject := handlers.ProjectPostRequest{
-		Project: models.Project{
-			Name:        "project",
-			Description: "project description",
-		},
+		Name:        "project",
+		Description: "project description",
 	}
 	requestBody, err := json.Marshal(newProject)
 	assert.NoError(t, err)
@@ -140,8 +138,8 @@ func (suite *OrganizationHandlerTestSuite) TestPostProjectHandlerSuccess() {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(savedOrganization.Projects))
 	savedProject := savedOrganization.Projects[0]
-	assert.Equal(t, newProject.Project.Name, savedProject.Name)
-	assert.Equal(t, newProject.Project.Description, savedProject.Description)
+	assert.Equal(t, newProject.Name, savedProject.Name)
+	assert.Equal(t, newProject.Description, savedProject.Description)
 }
 
 func (suite *OrganizationHandlerTestSuite) TestPostProjectUnauthorized() {
