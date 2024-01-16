@@ -35,7 +35,7 @@ type PostFeatureFlagRequest struct {
 	DefaultValue string          `json:"default_value" validate:"required"`
 	Rules        []models.Rule   `json:"rules" validate:"dive,required"`
 	Environment  string          `json:"environment" validate:"required"`
-	ProjectName  string          `json:"projectName"`
+	ProjectName  string          `json:"project_name"`
 }
 
 type PatchFeatureFlagRequest struct {
