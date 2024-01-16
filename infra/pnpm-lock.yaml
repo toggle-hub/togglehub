@@ -13,6 +13,9 @@ dependencies:
     version: 10.3.0
 
 devDependencies:
+  '@types/aws-lambda':
+    specifier: ^8.10.131
+    version: 8.10.131
   '@types/jest':
     specifier: ^29.5.11
     version: 29.5.11
@@ -690,6 +693,10 @@ packages:
 
   /@tsconfig/node16@1.0.4:
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
+    dev: true
+
+  /@types/aws-lambda@8.10.131:
+    resolution: {integrity: sha512-IWmFpqnVDvskYWnNSiu/qlRn80XlIOU0Gy5rKCl/NjhnI95pV8qIHs6L5b+bpHhyzuOSzjLgBcwgFSXrC1nZWA==}
     dev: true
 
   /@types/babel__core@7.20.5:

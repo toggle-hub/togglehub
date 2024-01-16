@@ -6,6 +6,8 @@
       "es2020",
       "dom"
     ],
+    "outDir": "./dist",
+    "rootDir": "./workers",
     "declaration": true,
     "strict": true,
     "noImplicitAny": true,
@@ -24,6 +26,7 @@
       "./node_modules/@types"
     ]
   },
+  "include": ["workers/**/*.ts"],
   "exclude": [
     "node_modules",
     "cdk.out"
