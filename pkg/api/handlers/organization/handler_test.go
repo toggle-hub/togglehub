@@ -1,4 +1,4 @@
-package handlers_test
+package organizationhandler_test
 
 import (
 	"bytes"
@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
-	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
+	organizationhandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/organization"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
@@ -41,7 +41,7 @@ func (suite *OrganizationHandlerTestSuite) SetupTest() {
 
 	logger, _ := logger.NewZapLogger()
 
-	h := handlers.NewOrganizationHandler(suite.db, logger)
+	h := organizationhandler.New(suite.db, logger)
 	suite.Server.POST("/organizations", middlewares.AuthMiddleware(h.PostOrganization))
 }
 

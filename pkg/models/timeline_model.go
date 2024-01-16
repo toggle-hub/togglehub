@@ -13,7 +13,7 @@ import (
 const TimelineCollectionName = "timeline"
 
 const (
-	Created             = "FeatureFlag creted"
+	Created             = "FeatureFlag created"
 	RevisionCreated     = "Revision created"
 	RevisionApproved    = "Revision approved"
 	FeatureFlagRollback = "FeatureFlag rollback"

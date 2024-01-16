@@ -1,4 +1,4 @@
-package handlers_test
+package featureflaghandler_test
 
 import (
 	"bytes"
@@ -12,12 +12,13 @@ import (
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
-	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
-	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
+	featureflaghandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/feature_flag"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
 	"github.com/Roll-Play/togglelabs/pkg/models"
+	featureflagmodel "github.com/Roll-Play/togglelabs/pkg/models/feature_flag"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
@@ -44,7 +45,7 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 	suite.Server = echo.New()
 
 	logger, _ := logger.NewZapLogger()
-	h := handlers.NewFeatureFlagHandler(suite.db, logger)
+	h := featureflaghandler.New(suite.db, logger)
 
 	testGroup := suite.Server.Group("", middlewares.AuthMiddleware, middlewares.OrganizationMiddleware)
 	testGroup.POST("/features", h.PostFeatureFlag)
@@ -82,17 +83,17 @@ func (suite *FeatureFlagHandlerTestSuite) TearDownSuite() {
 func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	t := suite.T()
 
-	rule := models.Rule{
+	rule := featureflagmodel.Rule{
 		Predicate: "attr: rule",
 		Value:     "false",
 		Env:       "prd",
 		IsEnabled: true,
 	}
-	featureFlagRequest := handlers.PostFeatureFlagRequest{
+	featureFlagRequest := featureflaghandler.PostFeatureFlagRequest{
 		Name:         "cool feature",
-		Type:         models.Boolean,
+		Type:         featureflagmodel.Boolean,
 		DefaultValue: "true",
-		Rules: []models.Rule{
+		Rules: []featureflagmodel.Rule{
 			rule,
 		},
 		Environment: "prod",
@@ -123,7 +124,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response models.FeatureFlagRecord
+	var response featureflagmodel.FeatureFlagRecord
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusCreated, recorder.Code)
@@ -136,7 +137,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	responseRevision := response.Revisions[0]
 	assert.Equal(t, user.ID, responseRevision.UserID)
 	assert.Equal(t, featureFlagRequest.DefaultValue, responseRevision.DefaultValue)
-	assert.Equal(t, models.Live, responseRevision.Status)
+	assert.Equal(t, featureflagmodel.Live, responseRevision.Status)
 
 	assert.NotEmpty(t, responseRevision.Rules)
 	responseRule := responseRevision.Rules[0]
@@ -200,19 +201,19 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 		),
 	}, suite.db)
 
-	revision := fixtures.CreateRevision(user.ID, models.Live, primitive.NilObjectID)
+	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		models.Boolean, []models.Revision{*revision}, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, suite.db)
 
-	newRule := models.Rule{
+	newRule := featureflagmodel.Rule{
 		Predicate: "attr: newRule",
 		Value:     "true",
 		Env:       "prd",
 		IsEnabled: true,
 	}
-	revisionRule := handlers.PatchFeatureFlagRequest{
+	revisionRule := featureflaghandler.PatchFeatureFlagRequest{
 		DefaultValue: "true",
-		Rules: []models.Rule{
+		Rules: []featureflagmodel.Rule{
 			newRule,
 		},
 	}
@@ -243,14 +244,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	featureFlagModel := models.NewFeatureFlagModel(suite.db)
-	var response models.Revision
+	featureFlagModel := featureflagmodel.New(suite.db)
+	var response featureflagmodel.Revision
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, user.ID, response.UserID)
 	assert.Equal(t, revisionRule.DefaultValue, response.DefaultValue)
-	assert.Equal(t, models.Draft, response.Status)
+	assert.Equal(t, featureflagmodel.Draft, response.Status)
 
 	savedFeatureFlag, err := featureFlagModel.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
@@ -260,7 +261,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	originalRevision := savedRevisions[0]
 	assert.Equal(t, user.ID, originalRevision.UserID)
 	assert.Equal(t, revision.DefaultValue, originalRevision.DefaultValue)
-	assert.Equal(t, models.Live, originalRevision.Status)
+	assert.Equal(t, featureflagmodel.Live, originalRevision.Status)
 	assert.NotEmpty(t, originalRevision.Rules)
 	originalRule := revision.Rules[0]
 	originalSavedRule := originalRevision.Rules[0]
@@ -272,7 +273,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	newSavedRevision := savedRevisions[1]
 	assert.Equal(t, user.ID, newSavedRevision.UserID)
 	assert.Equal(t, revisionRule.DefaultValue, newSavedRevision.DefaultValue)
-	assert.Equal(t, models.Draft, newSavedRevision.Status)
+	assert.Equal(t, featureflagmodel.Draft, newSavedRevision.Status)
 	assert.NotEmpty(t, newSavedRevision.Rules)
 	newSavedRule := newSavedRevision.Rules[0]
 	assert.Equal(t, newRule.Predicate, newSavedRule.Predicate)
@@ -336,9 +337,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 	assert.NoError(t, err)
 
 	featureFlag1 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		models.Boolean, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, suite.db)
 	featureFlag2 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
-		models.Boolean, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, suite.db)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -352,12 +353,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response handlers.ListFeatureFlagResponse
+	var response featureflaghandler.ListFeatureFlagResponse
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.Equal(t, handlers.ListFeatureFlagResponse{
-		Data: []models.FeatureFlagRecord{
+	assert.Equal(t, featureflaghandler.ListFeatureFlagResponse{
+		Data: []featureflagmodel.FeatureFlagRecord{
 			*featureFlag1,
 			*featureFlag2,
 		},
@@ -381,9 +382,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 	assert.NoError(t, err)
 
 	featureFlag := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		models.Boolean, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, suite.db)
 	fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
-		models.Boolean, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, suite.db)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -397,12 +398,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response handlers.ListFeatureFlagResponse
+	var response featureflaghandler.ListFeatureFlagResponse
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.Equal(t, handlers.ListFeatureFlagResponse{
-		Data: []models.FeatureFlagRecord{
+	assert.Equal(t, featureflaghandler.ListFeatureFlagResponse{
+		Data: []featureflagmodel.FeatureFlagRecord{
 			*featureFlag,
 		},
 		Page:     1,
@@ -463,12 +464,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 		),
 	}, suite.db)
 
-	willBeOriginalRevision := fixtures.CreateRevision(user.ID, models.Live, primitive.NilObjectID)
-	willBeLiveRevision := fixtures.CreateRevision(user.ID, models.Draft, primitive.NilObjectID)
-	willBeControlRevision := fixtures.CreateRevision(user.ID, models.Draft, primitive.NilObjectID)
+	willBeOriginalRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
+	willBeLiveRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Draft, primitive.NilObjectID)
+	willBeControlRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Draft, primitive.NilObjectID)
 
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		models.Boolean, []models.Revision{
+		featureflagmodel.Boolean, []featureflagmodel.Revision{
 			*willBeOriginalRevision,
 			*willBeLiveRevision,
 			*willBeControlRevision,
@@ -499,7 +500,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 	suite.Server.ServeHTTP(recorder, request)
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	model := models.NewFeatureFlagModel(suite.db)
+	model := featureflagmodel.New(suite.db)
 	savedFeatureFlag, err := model.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
 
@@ -508,11 +509,11 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 	assert.Equal(t, savedFeatureFlag.Version, 2)
 
 	originalRevision := savedRevisions[0]
-	assert.Equal(t, models.Archived, originalRevision.Status)
+	assert.Equal(t, featureflagmodel.Archived, originalRevision.Status)
 	updatedRevision := savedRevisions[1]
-	assert.Equal(t, models.Live, updatedRevision.Status)
+	assert.Equal(t, featureflagmodel.Live, updatedRevision.Status)
 	controlRevision := savedRevisions[2]
-	assert.Equal(t, models.Draft, controlRevision.Status)
+	assert.Equal(t, featureflagmodel.Draft, controlRevision.Status)
 
 	savedTimeline, err := timelineModel.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
@@ -612,10 +613,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 		),
 	}, suite.db)
 
-	revision := fixtures.CreateRevision(user.ID, models.Archived, primitive.NilObjectID)
-	wrongRevision := fixtures.CreateRevision(user.ID, models.Live, revision.ID)
+	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
+	wrongRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, revision.ID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		models.Boolean, []models.Revision{*revision, *wrongRevision}, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision, *wrongRevision}, nil, suite.db)
 
 	timelineModel := models.NewTimelineModel(suite.db)
 	timelineRecord := &models.TimelineRecord{
@@ -643,7 +644,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 
-	featureFlagModel := models.NewFeatureFlagModel(suite.db)
+	featureFlagModel := featureflagmodel.New(suite.db)
 	savedFeatureFlag, err := featureFlagModel.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
 
@@ -652,9 +653,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 	assert.Equal(t, 1, savedFeatureFlag.Version)
 
 	liveRevision := savedRevisions[0]
-	assert.Equal(t, models.Live, liveRevision.Status)
+	assert.Equal(t, featureflagmodel.Live, liveRevision.Status)
 	rolledBackRevision := savedRevisions[1]
-	assert.Equal(t, models.Draft, rolledBackRevision.Status)
+	assert.Equal(t, featureflagmodel.Draft, rolledBackRevision.Status)
 
 	savedTimeline, err := timelineModel.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
@@ -754,9 +755,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 		),
 	}, suite.db)
 
-	revision := fixtures.CreateRevision(user.ID, models.Archived, primitive.NilObjectID)
+	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		models.Boolean, []models.Revision{*revision}, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, suite.db)
 
 	timelineModel := models.NewTimelineModel(suite.db)
 	timelineRecord := &models.TimelineRecord{
@@ -781,7 +782,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	model := models.NewFeatureFlagModel(suite.db)
+	model := featureflagmodel.New(suite.db)
 
 	deletedRecord, err := model.FindOne(context.Background(), bson.D{
 		{Key: "_id", Value: featureFlagRecord.ID},
@@ -810,9 +811,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 			models.ReadOnly,
 		),
 	}, suite.db)
-	revision := fixtures.CreateRevision(user.ID, models.Archived, primitive.NilObjectID)
+	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		models.Boolean, []models.Revision{*revision}, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -849,7 +850,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 	}, suite.db)
 
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		models.Boolean, nil, []models.FeatureFlagEnvironment{
+		featureflagmodel.Boolean, nil, []featureflagmodel.FeatureFlagEnvironment{
 			{
 				Name:      "prod",
 				IsEnabled: true,
@@ -886,7 +887,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 
-	featureFlagModel := models.NewFeatureFlagModel(suite.db)
+	featureFlagModel := featureflagmodel.New(suite.db)
 	savedFeatureFlag, err := featureFlagModel.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, featureFlagRecord.Environments[0].Name, savedFeatureFlag.Environments[0].Name)

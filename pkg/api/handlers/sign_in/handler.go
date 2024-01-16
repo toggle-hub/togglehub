@@ -1,4 +1,4 @@
-package handlers
+package signinhandler
 
 import (
 	"context"
@@ -111,7 +111,7 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 	})
 }
 
-func NewSignInHandler(db *mongo.Database, logger *zap.Logger) *SignInHandler {
+func New(db *mongo.Database, logger *zap.Logger) *SignInHandler {
 	return &SignInHandler{
 		db:     db,
 		logger: logger,

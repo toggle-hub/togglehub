@@ -1,4 +1,4 @@
-package handlers_test
+package ssohandler_test
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
-	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
+	ssohandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/sso"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
@@ -82,7 +82,7 @@ func (suite *SsoTestSuite) TestSSoHandlerNewUserSuccess() {
 
 	logger, _ := logger.NewZapLogger()
 
-	h := handlers.NewSsoHandler(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
+	h := ssohandler.New(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
 	assert.NotNil(t, h)
 	suite.Server.GET("/callback", h.Callback)
 	suite.Server.ServeHTTP(recorder, request)
@@ -120,7 +120,7 @@ func (suite *SsoTestSuite) TestSSoHandlerExistingUserSuccess() {
 
 	logger, _ := logger.NewZapLogger()
 
-	h := handlers.NewSsoHandler(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
+	h := ssohandler.New(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
 	suite.Server.GET("/callback", h.Callback)
 	suite.Server.ServeHTTP(recorder, request)
 	var response common.AuthResponse

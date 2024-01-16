@@ -1,4 +1,4 @@
-package handlers
+package organizationhandler
 
 import (
 	"context"
@@ -107,7 +107,7 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 	return c.JSON(http.StatusCreated, organization)
 }
 
-func NewOrganizationHandler(db *mongo.Database, logger *zap.Logger) *OrganizationHandler {
+func New(db *mongo.Database, logger *zap.Logger) *OrganizationHandler {
 	return &OrganizationHandler{
 		db:     db,
 		logger: logger,

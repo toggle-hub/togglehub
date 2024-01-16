@@ -1,4 +1,4 @@
-package handlers
+package userhandler
 
 import (
 	"context"
@@ -22,7 +22,7 @@ type UserHandler struct {
 	logger *zap.Logger
 }
 
-func NewUserHandler(db *mongo.Database, logger *zap.Logger) *UserHandler {
+func New(db *mongo.Database, logger *zap.Logger) *UserHandler {
 	return &UserHandler{
 		db:     db,
 		logger: logger,
