@@ -13,6 +13,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
@@ -197,6 +198,58 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, project)
+}
+
+func (oh *OrganizationHandler) GetOrganization(c echo.Context) error {
+	userID, err := api_utils.GetUserFromContext(c)
+	if err != nil {
+		oh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationID, err := primitive.ObjectIDFromHex(c.Param("organizationID"))
+	if err != nil {
+		oh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationModel := organizationmodel.New(oh.db)
+	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
+	if err != nil {
+		oh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
+	if !permission {
+		oh.logger.Debug("Client error",
+			zap.String("cause", api_errors.ForbiddenError),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusForbidden,
+			api_errors.ForbiddenError,
+		)
+	}
+
+	return c.JSON(http.StatusOK, organizationRecord)
 }
 
 func NewOrganizationHandler(db *mongo.Database, logger *zap.Logger) *OrganizationHandler {
