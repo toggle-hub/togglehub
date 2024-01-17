@@ -1,4 +1,4 @@
-package ssohandler_test
+package handlers_test
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
-	ssohandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/sso"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
@@ -31,7 +31,7 @@ type SsoTestSuite struct {
 
 func (suite *SsoTestSuite) SetupTest() {
 	testCtx := context.Background()
-	if err := godotenv.Load("../../../../.env.test"); err != nil {
+	if err := godotenv.Load("../../../.env.test"); err != nil {
 		log.Panic(err)
 	}
 
@@ -82,7 +82,7 @@ func (suite *SsoTestSuite) TestSSoHandlerNewUserSuccess() {
 
 	logger, _ := logger.NewZapLogger()
 
-	h := ssohandler.New(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
+	h := handlers.NewSsoHandler(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
 	assert.NotNil(t, h)
 	suite.Server.GET("/callback", h.Callback)
 	suite.Server.ServeHTTP(recorder, request)
@@ -120,7 +120,7 @@ func (suite *SsoTestSuite) TestSSoHandlerExistingUserSuccess() {
 
 	logger, _ := logger.NewZapLogger()
 
-	h := ssohandler.New(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
+	h := handlers.NewSsoHandler(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
 	suite.Server.GET("/callback", h.Callback)
 	suite.Server.ServeHTTP(recorder, request)
 	var response common.AuthResponse

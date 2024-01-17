@@ -1,4 +1,4 @@
-package ssohandler
+package handlers
 
 import (
 	"context"
@@ -27,7 +27,7 @@ type SsoHandler struct {
 	oauthClient api_utils.OAuthClient
 }
 
-func New(
+func NewSsoHandler(
 	db *mongo.Database,
 	oauthConfig *oauth2.Config,
 	logger *zap.Logger,

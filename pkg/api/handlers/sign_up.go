@@ -1,4 +1,4 @@
-package signuphandler
+package handlers
 
 import (
 	"context"
@@ -20,7 +20,7 @@ type SignUpHandler struct {
 	logger *zap.Logger
 }
 
-func New(db *mongo.Database, logger *zap.Logger) *SignUpHandler {
+func NewSignUpHandler(db *mongo.Database, logger *zap.Logger) *SignUpHandler {
 	return &SignUpHandler{
 		db:     db,
 		logger: logger,

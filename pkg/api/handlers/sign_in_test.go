@@ -1,4 +1,4 @@
-package signinhandler_test
+package handlers_test
 
 import (
 	"bytes"
@@ -10,8 +10,8 @@ import (
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
-	signinhandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/sign_in"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
@@ -36,7 +36,7 @@ func (suite *SignInHandlerTestSuite) SetupTest() {
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
 	logger, _ := logger.NewZapLogger()
-	h := signinhandler.New(suite.db, logger)
+	h := handlers.NewSignInHandler(suite.db, logger)
 	suite.Server.POST("/signin", h.PostSignIn)
 }
 

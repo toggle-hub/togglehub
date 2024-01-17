@@ -1,4 +1,4 @@
-package featureflaghandler
+package handlers
 
 import (
 	"context"
@@ -24,7 +24,7 @@ type FeatureFlagHandler struct {
 	logger *zap.Logger
 }
 
-func New(db *mongo.Database, logger *zap.Logger) *FeatureFlagHandler {
+func NewFeatureFlagHandler(db *mongo.Database, logger *zap.Logger) *FeatureFlagHandler {
 	return &FeatureFlagHandler{
 		db:     db,
 		logger: logger,
