@@ -1,4 +1,4 @@
-package models
+package timelinemodel
 
 import (
 	"context"
@@ -26,7 +26,7 @@ type TimelineModel struct {
 	collection *mongo.Collection
 }
 
-func NewTimelineModel(db *mongo.Database) *TimelineModel {
+func New(db *mongo.Database) *TimelineModel {
 	return &TimelineModel{
 		db:         db,
 		collection: db.Collection(TimelineCollectionName),

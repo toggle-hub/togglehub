@@ -7,9 +7,9 @@ import (
 	"time"
 
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
-	"github.com/Roll-Play/togglelabs/pkg/models"
 	featureflagmodel "github.com/Roll-Play/togglelabs/pkg/models/feature_flag"
 	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
+	timelinemodel "github.com/Roll-Play/togglelabs/pkg/models/timeline"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -223,11 +223,11 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	timelineModel := models.NewTimelineModel(ffh.db)
+	timelineModel := timelinemodel.New(ffh.db)
 	_, err = timelineModel.InsertOne(context.Background(),
-		&models.TimelineRecord{
+		&timelinemodel.TimelineRecord{
 			FeatureFlagID: featureFlagID,
-			Entries:       []models.TimelineEntry{},
+			Entries:       []timelinemodel.TimelineEntry{},
 		})
 	if err != nil {
 		ffh.logger.Debug("Client error",
@@ -240,9 +240,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	timelineEntry := models.NewTimelineEntry(
+	timelineEntry := timelinemodel.NewTimelineEntry(
 		userID,
-		models.Created,
+		timelinemodel.Created,
 	)
 	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
@@ -353,8 +353,8 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	timelineModel := models.NewTimelineModel(ffh.db)
-	timelineEntry := models.NewTimelineEntry(userID, models.RevisionCreated)
+	timelineModel := timelinemodel.New(ffh.db)
+	timelineEntry := timelinemodel.NewTimelineEntry(userID, timelinemodel.RevisionCreated)
 	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -488,8 +488,8 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		)
 	}
 
-	timelineModel := models.NewTimelineModel(ffh.db)
-	timelineEntry := models.NewTimelineEntry(userID, models.RevisionApproved)
+	timelineModel := timelinemodel.New(ffh.db)
+	timelineEntry := timelinemodel.NewTimelineEntry(userID, timelinemodel.RevisionApproved)
 	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -612,8 +612,8 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 			api_errors.InternalServerError,
 		)
 	}
-	timelineModel := models.NewTimelineModel(ffh.db)
-	timelineEntry := models.NewTimelineEntry(userID, models.FeatureFlagRollback)
+	timelineModel := timelinemodel.New(ffh.db)
+	timelineEntry := timelinemodel.NewTimelineEntry(userID, timelinemodel.FeatureFlagRollback)
 	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -714,8 +714,8 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	timelineModel := models.NewTimelineModel(ffh.db)
-	timelineEntry := models.NewTimelineEntry(userID, models.FeatureFlagDeleted)
+	timelineModel := timelinemodel.New(ffh.db)
+	timelineEntry := timelinemodel.NewTimelineEntry(userID, timelinemodel.FeatureFlagDeleted)
 	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -831,8 +831,8 @@ func (ffh *FeatureFlagHandler) ToggleFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	timelineModel := models.NewTimelineModel(ffh.db)
-	timelineEntry := models.NewTimelineEntry(userID, fmt.Sprintf(models.FeatureFlagToggle, environmentName))
+	timelineModel := timelinemodel.New(ffh.db)
+	timelineEntry := timelinemodel.NewTimelineEntry(userID, fmt.Sprintf(timelinemodel.FeatureFlagToggle, environmentName))
 	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",

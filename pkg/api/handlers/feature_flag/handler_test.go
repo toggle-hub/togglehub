@@ -17,9 +17,9 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
-	"github.com/Roll-Play/togglelabs/pkg/models"
 	featureflagmodel "github.com/Roll-Play/togglelabs/pkg/models/feature_flag"
 	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
+	timelinemodel "github.com/Roll-Play/togglelabs/pkg/models/timeline"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
@@ -148,11 +148,11 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	assert.Equal(t, rule.Env, responseRule.Env)
 	assert.Equal(t, rule.IsEnabled, responseRule.IsEnabled)
 
-	timelineModel := models.NewTimelineModel(suite.db)
+	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord, err := timelineModel.FindByID(context.Background(), response.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(timelineRecord.Entries))
-	assert.Equal(t, models.Created, timelineRecord.Entries[0].Action)
+	assert.Equal(t, timelinemodel.Created, timelineRecord.Entries[0].Action)
 	assert.Equal(t, user.ID, timelineRecord.Entries[0].UserID)
 }
 
@@ -220,10 +220,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 		},
 	}
 
-	timelineModel := models.NewTimelineModel(suite.db)
-	timelineRecord := &models.TimelineRecord{
+	timelineModel := timelinemodel.New(suite.db)
+	timelineRecord := &timelinemodel.TimelineRecord{
 		FeatureFlagID: featureFlagRecord.ID,
-		Entries:       []models.TimelineEntry{},
+		Entries:       []timelinemodel.TimelineEntry{},
 	}
 	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
 	assert.NoError(t, err)
@@ -286,7 +286,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	savedTimeline, err := timelineModel.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(savedTimeline.Entries))
-	assert.Equal(t, models.RevisionCreated, savedTimeline.Entries[0].Action)
+	assert.Equal(t, timelinemodel.RevisionCreated, savedTimeline.Entries[0].Action)
 	assert.Equal(t, user.ID, savedTimeline.Entries[0].UserID)
 }
 
@@ -477,10 +477,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 			*willBeControlRevision,
 		}, nil, suite.db)
 
-	timelineModel := models.NewTimelineModel(suite.db)
-	timelineRecord := &models.TimelineRecord{
+	timelineModel := timelinemodel.New(suite.db)
+	timelineRecord := &timelinemodel.TimelineRecord{
 		FeatureFlagID: featureFlagRecord.ID,
-		Entries:       []models.TimelineEntry{},
+		Entries:       []timelinemodel.TimelineEntry{},
 	}
 	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
 	assert.NoError(t, err)
@@ -520,7 +520,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 	savedTimeline, err := timelineModel.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(savedTimeline.Entries))
-	assert.Equal(t, models.RevisionApproved, savedTimeline.Entries[0].Action)
+	assert.Equal(t, timelinemodel.RevisionApproved, savedTimeline.Entries[0].Action)
 	assert.Equal(t, user.ID, savedTimeline.Entries[0].UserID)
 }
 
@@ -620,10 +620,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision, *wrongRevision}, nil, suite.db)
 
-	timelineModel := models.NewTimelineModel(suite.db)
-	timelineRecord := &models.TimelineRecord{
+	timelineModel := timelinemodel.New(suite.db)
+	timelineRecord := &timelinemodel.TimelineRecord{
 		FeatureFlagID: featureFlagRecord.ID,
-		Entries:       []models.TimelineEntry{},
+		Entries:       []timelinemodel.TimelineEntry{},
 	}
 	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
 	assert.NoError(t, err)
@@ -662,7 +662,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 	savedTimeline, err := timelineModel.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(savedTimeline.Entries))
-	assert.Equal(t, models.FeatureFlagRollback, savedTimeline.Entries[0].Action)
+	assert.Equal(t, timelinemodel.FeatureFlagRollback, savedTimeline.Entries[0].Action)
 	assert.Equal(t, user.ID, savedTimeline.Entries[0].UserID)
 }
 
@@ -761,10 +761,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, suite.db)
 
-	timelineModel := models.NewTimelineModel(suite.db)
-	timelineRecord := &models.TimelineRecord{
+	timelineModel := timelinemodel.New(suite.db)
+	timelineRecord := &timelinemodel.TimelineRecord{
 		FeatureFlagID: featureFlagRecord.ID,
-		Entries:       []models.TimelineEntry{},
+		Entries:       []timelinemodel.TimelineEntry{},
 	}
 	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
 	assert.NoError(t, err)
@@ -800,7 +800,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 	savedTimeline, err := timelineModel.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(savedTimeline.Entries))
-	assert.Equal(t, models.FeatureFlagDeleted, savedTimeline.Entries[0].Action)
+	assert.Equal(t, timelinemodel.FeatureFlagDeleted, savedTimeline.Entries[0].Action)
 	assert.Equal(t, user.ID, savedTimeline.Entries[0].UserID)
 }
 
@@ -863,10 +863,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 			},
 		}, suite.db)
 
-	timelineModel := models.NewTimelineModel(suite.db)
-	timelineRecord := &models.TimelineRecord{
+	timelineModel := timelinemodel.New(suite.db)
+	timelineRecord := &timelinemodel.TimelineRecord{
 		FeatureFlagID: featureFlagRecord.ID,
-		Entries:       []models.TimelineEntry{},
+		Entries:       []timelinemodel.TimelineEntry{},
 	}
 	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
 	assert.NoError(t, err)
@@ -900,7 +900,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 	savedTimeline, err := timelineModel.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(savedTimeline.Entries))
-	assert.Equal(t, fmt.Sprintf(models.FeatureFlagToggle, "prod"), savedTimeline.Entries[0].Action)
+	assert.Equal(t, fmt.Sprintf(timelinemodel.FeatureFlagToggle, "prod"), savedTimeline.Entries[0].Action)
 	assert.Equal(t, user.ID, savedTimeline.Entries[0].UserID)
 }
 
