@@ -7,7 +7,8 @@ import (
 	"net/http"
 
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -54,7 +55,7 @@ type UserGetResponse struct {
 	Organizations []UserOrganization `json:"organizations"`
 }
 
-func NewUserGetResponse(user *models.UserRecord, organizations []models.OrganizationRecord) *UserGetResponse {
+func NewUserGetResponse(user *usermodel.UserRecord, organizations []organizationmodel.OrganizationRecord) *UserGetResponse {
 	userOrganizations := make([]UserOrganization, len(organizations))
 
 	for index, organization := range organizations {
@@ -99,7 +100,7 @@ func (uh *UserHandler) GetUser(c echo.Context) error {
 		)
 	}
 
-	model := models.NewUserModel(uh.db)
+	model := usermodel.New(uh.db)
 	user, err := model.FindByID(context.Background(), userID)
 	if err != nil {
 		uh.logger.Debug("Client error",
@@ -111,7 +112,7 @@ func (uh *UserHandler) GetUser(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(uh.db)
+	organizationModel := organizationmodel.New(uh.db)
 	organizations, err := organizationModel.FindByMember(context.Background(), user.ID)
 	if err != nil {
 		uh.logger.Debug("Server error",
@@ -177,7 +178,7 @@ func (uh *UserHandler) PatchUser(c echo.Context) error {
 		)
 	}
 
-	model := models.NewUserModel(uh.db)
+	model := usermodel.New(uh.db)
 	ur, err := model.FindByID(context.Background(), userID)
 	if err != nil {
 		uh.logger.Debug("Client error",

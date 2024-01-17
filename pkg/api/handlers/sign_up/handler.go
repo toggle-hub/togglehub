@@ -7,7 +7,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/config"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -56,7 +56,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		)
 	}
 
-	model := models.NewUserModel(sh.db)
+	model := usermodel.New(sh.db)
 	_, err := model.FindByEmail(context.Background(), request.Email)
 	if err == nil {
 		sh.logger.Debug("Client error",
@@ -68,7 +68,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		)
 	}
 
-	ur, err := models.NewUserRecord(request.Email, request.Password, "", "")
+	ur, err := usermodel.NewUserRecord(request.Email, request.Password, "", "")
 	if err != nil {
 		sh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),

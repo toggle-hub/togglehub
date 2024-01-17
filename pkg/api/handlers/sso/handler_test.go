@@ -13,7 +13,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
 	ssohandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/sso"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
@@ -70,7 +70,7 @@ func (suite *SsoTestSuite) TestSSoHandlerNewUserSuccess() {
 		},
 	}
 
-	model := models.NewUserModel(suite.db)
+	model := usermodel.New(suite.db)
 
 	request := httptest.NewRequest(http.MethodGet, "/callback", nil)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)

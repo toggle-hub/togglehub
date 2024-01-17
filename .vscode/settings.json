@@ -7,12 +7,14 @@
     "healthzhandler",
     "labstack",
     "organizationhandler",
+    "organizationmodel",
     "signin",
     "signinhandler",
     "signup",
     "signuphandler",
     "stretchr",
     "togglelabs",
-    "userhandler"
+    "userhandler",
+    "usermodel"
   ]
 }

@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var userCounter = 0
 
-func CreateUser(email, firstName, lastName, password string, db *mongo.Database) *models.UserRecord {
+func CreateUser(email, firstName, lastName, password string, db *mongo.Database) *usermodel.UserRecord {
 	userCounter++
-	model := models.NewUserModel(db)
+	model := usermodel.New(db)
 	if email == "" {
 		email = fmt.Sprintf("johndoe%d@gmail.com", userCounter)
 	}
@@ -28,7 +28,7 @@ func CreateUser(email, firstName, lastName, password string, db *mongo.Database)
 	if password == "" {
 		password = "big_secret_password"
 	}
-	record, err := models.NewUserRecord(email, password, firstName, lastName)
+	record, err := usermodel.NewUserRecord(email, password, firstName, lastName)
 	if err != nil {
 		panic(err)
 	}

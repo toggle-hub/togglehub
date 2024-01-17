@@ -19,6 +19,8 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/logger"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	featureflagmodel "github.com/Roll-Play/togglelabs/pkg/models/feature_flag"
+	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
@@ -102,10 +104,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	assert.NoError(t, err)
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
 	}, suite.db)
 
@@ -158,10 +160,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.ReadOnly,
+			organizationmodel.ReadOnly,
 		),
 	}, suite.db)
 
@@ -194,10 +196,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
 	}, suite.db)
 
@@ -292,10 +294,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.ReadOnly,
+			organizationmodel.ReadOnly,
 		),
 	}, suite.db)
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
@@ -327,10 +329,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
 	}, suite.db)
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
@@ -372,10 +374,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
 	}, suite.db)
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
@@ -416,16 +418,16 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
 	}, suite.db)
-	user, err := models.NewUserRecord("evildoear97@gmail.com", "trying_to_steal_info", "Evil", "Doer")
+	user, err := usermodel.NewUserRecord("evildoear97@gmail.com", "trying_to_steal_info", "Evil", "Doer")
 	assert.NoError(t, err)
 
-	userModel := models.NewUserModel(suite.db)
+	userModel := usermodel.New(suite.db)
 	userID, err := userModel.InsertOne(context.Background(), user)
 	assert.NoError(t, err)
 
@@ -457,10 +459,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 	t := suite.T()
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
 	}, suite.db)
 
@@ -526,10 +528,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
 	}, suite.db)
 
@@ -566,14 +568,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorizedMissingP
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			unauthorizedUser,
-			models.ReadOnly,
+			organizationmodel.ReadOnly,
 		),
 	}, suite.db)
 
@@ -606,10 +608,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorizedMissingP
 func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 	t := suite.T()
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Collaborator,
+			organizationmodel.Collaborator,
 		),
 	}, suite.db)
 
@@ -668,10 +670,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorized() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
 	}, suite.db)
 
@@ -708,14 +710,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorizedMissingPermiss
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.ReadOnly,
+			organizationmodel.ReadOnly,
 		),
 	}, suite.db)
 
@@ -748,10 +750,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorizedMissingPermiss
 func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 	t := suite.T()
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
 	}, suite.db)
 
@@ -805,10 +807,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 	t := suite.T()
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.ReadOnly,
+			organizationmodel.ReadOnly,
 		),
 	}, suite.db)
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
@@ -842,10 +844,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 	t := suite.T()
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Collaborator,
+			organizationmodel.Collaborator,
 		),
 	}, suite.db)
 
@@ -906,10 +908,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleUnauthorized() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
 	}, suite.db)
 
@@ -946,14 +948,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleMissingPermission
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		),
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.ReadOnly,
+			organizationmodel.ReadOnly,
 		),
 	}, suite.db)
 

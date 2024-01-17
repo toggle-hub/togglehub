@@ -1,10 +1,11 @@
-package models
+package organizationmodel
 
 import (
 	"context"
 	"errors"
 	"time"
 
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	"github.com/Roll-Play/togglelabs/pkg/storage"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -18,7 +19,7 @@ type OrganizationModel struct {
 	collection *mongo.Collection
 }
 
-func NewOrganizationModel(db *mongo.Database) *OrganizationModel {
+func New(db *mongo.Database) *OrganizationModel {
 	return &OrganizationModel{
 		db:         db,
 		collection: db.Collection(OrganizationCollectionName),
@@ -93,8 +94,8 @@ const (
 )
 
 type OrganizationMember struct {
-	User            UserRecord          `json:"user" bson:"user"`
-	PermissionLevel PermissionLevelEnum `json:"permission_level" bson:"permission_level"`
+	User            usermodel.UserRecord `json:"user" bson:"user"`
+	PermissionLevel PermissionLevelEnum  `json:"permission_level" bson:"permission_level"`
 }
 
 type OrganizationInviteStatus = string

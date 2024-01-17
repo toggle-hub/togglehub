@@ -5,31 +5,32 @@ import (
 	"fmt"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var organizationCounter = 0
 
-var EmptyMemberTupleList = []common.Tuple[*models.UserRecord, models.PermissionLevelEnum]{}
+var EmptyMemberTupleList = []common.Tuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum]{}
 
 func CreateOrganization(
 	name string,
-	users []common.Tuple[*models.UserRecord, models.PermissionLevelEnum],
+	users []common.Tuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum],
 	db *mongo.Database,
-) *models.OrganizationRecord {
+) *organizationmodel.OrganizationRecord {
 	organizationCounter++
-	members := make([]models.OrganizationMember, 0)
+	members := make([]organizationmodel.OrganizationMember, 0)
 	if len(users) < 1 {
 		user := CreateUser("", "", "", "", db)
-		members = append(members, models.OrganizationMember{
+		members = append(members, organizationmodel.OrganizationMember{
 			User:            *user,
-			PermissionLevel: models.Admin,
+			PermissionLevel: organizationmodel.Admin,
 		})
 	}
 
 	for _, tuple := range users {
-		members = append(members, models.OrganizationMember{
+		members = append(members, organizationmodel.OrganizationMember{
 			User:            *tuple.First,
 			PermissionLevel: tuple.Second,
 		})
@@ -39,9 +40,9 @@ func CreateOrganization(
 		name = fmt.Sprintf("the company %d", organizationCounter)
 	}
 
-	model := models.NewOrganizationModel(db)
+	model := organizationmodel.New(db)
 
-	record := models.NewOrganizationRecord(name, members)
+	record := organizationmodel.NewOrganizationRecord(name, members)
 
 	_, err := model.InsertOne(context.Background(), record)
 	if err != nil {

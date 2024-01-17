@@ -9,6 +9,7 @@ import (
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/models"
 	featureflagmodel "github.com/Roll-Play/togglelabs/pkg/models/feature_flag"
+	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -80,7 +81,7 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organization, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -93,7 +94,7 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organization, models.ReadOnly)
+	permission := api_utils.UserHasPermission(userID, organization, organizationmodel.ReadOnly)
 	if !permission {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", api_errors.ForbiddenError),
@@ -152,7 +153,7 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -164,7 +165,7 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", api_errors.ForbiddenError),
@@ -282,7 +283,7 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -294,7 +295,7 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", api_errors.ForbiddenError),
@@ -393,7 +394,7 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -405,7 +406,7 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", api_errors.UnauthorizedError),
@@ -528,7 +529,7 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -540,7 +541,7 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", api_errors.ForbiddenError),
@@ -652,7 +653,7 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -664,7 +665,7 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", api_errors.ForbiddenError),
@@ -756,7 +757,7 @@ func (ffh *FeatureFlagHandler) ToggleFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -767,7 +768,7 @@ func (ffh *FeatureFlagHandler) ToggleFeatureFlag(c echo.Context) error {
 			api_errors.InternalServerError,
 		)
 	}
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", api_errors.ForbiddenError),
