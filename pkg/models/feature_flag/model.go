@@ -95,11 +95,12 @@ func NewFeatureFlagRecord(
 		Type:           flagType,
 		Revisions: []Revision{
 			{
-				ID:           primitive.NewObjectID(),
-				UserID:       userID,
-				Status:       Live,
-				DefaultValue: defaultValue,
-				Rules:        rules,
+				ID:             primitive.NewObjectID(),
+				UserID:         userID,
+				Status:         Live,
+				DefaultValue:   defaultValue,
+				Rules:          NewRuleRecordList(rules),
+				LastRevisionID: primitive.NilObjectID,
 			},
 		},
 		Environments: []FeatureFlagEnvironment{
@@ -112,6 +113,25 @@ func NewFeatureFlagRecord(
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},
+	}
+}
+
+func NewRuleRecordList(rules []Rule) []Rule {
+	for index, rule := range rules {
+		rules[index] = NewRuleRecord(rule)
+	}
+
+	return rules
+}
+
+func NewRuleRecord(rule Rule) Rule {
+	rule.ID = primitive.NewObjectID()
+	return Rule{
+		ID:        primitive.NewObjectID(),
+		Predicate: rule.Predicate,
+		Value:     rule.Value,
+		Env:       rule.Env,
+		IsEnabled: rule.IsEnabled,
 	}
 }
 
@@ -159,17 +179,19 @@ func (ffm *FeatureFlagModel) FindMany(
 	organizationID primitive.ObjectID,
 	page,
 	limit int,
+	sort bson.D,
 ) ([]FeatureFlagRecord, error) {
-	findOptions := options.Find()
-	findOptions.SetSkip(int64((page - 1) * limit))
-	findOptions.SetLimit(int64(limit))
+	opts := options.Find()
+	opts.SetSkip(int64((page - 1) * limit))
+	opts.SetLimit(int64(limit))
+	opts.SetSort(sort)
 
 	records := make([]FeatureFlagRecord, 0)
 	cursor, err := ffm.collection.Find(ctx, bson.D{
 		{Key: "organization_id", Value: organizationID},
 		{Key: "deleted_at", Value: bson.M{
 			"$exists": false},
-		}}, findOptions)
+		}}, opts)
 	if err != nil {
 		return EmptyFeatureRecordList, err
 	}

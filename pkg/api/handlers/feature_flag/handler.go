@@ -108,7 +108,10 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 
 	model := featureflagmodel.New(ffh.db)
 
-	featureFlags, err := model.FindMany(context.Background(), organizationID, page, limit)
+	featureFlags, err := model.FindMany(context.Background(), organizationID, page, limit, bson.D{{
+		Key:   "timestamps.created_at",
+		Value: -1,
+	}})
 	if err != nil {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
