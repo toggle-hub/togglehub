@@ -11,10 +11,10 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
-	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -59,7 +59,7 @@ func (suite *SignUpHandlerTestSuite) TearDownSuite() {
 func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 	t := suite.T()
 
-	model := models.NewUserModel(suite.db)
+	model := usermodel.New(suite.db)
 
 	requestBody := []byte(`{
 		"email": "fizi@gmail.com",

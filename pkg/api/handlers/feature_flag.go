@@ -7,7 +7,9 @@ import (
 	"time"
 
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	featureflagmodel "github.com/Roll-Play/togglelabs/pkg/models/feature_flag"
+	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
+	timelinemodel "github.com/Roll-Play/togglelabs/pkg/models/timeline"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -30,24 +32,24 @@ func NewFeatureFlagHandler(db *mongo.Database, logger *zap.Logger) *FeatureFlagH
 }
 
 type PostFeatureFlagRequest struct {
-	Name         string          `json:"name" validate:"required"`
-	Type         models.FlagType `json:"type" validate:"required,oneof=boolean json string number"`
-	DefaultValue string          `json:"default_value" validate:"required"`
-	Rules        []models.Rule   `json:"rules" validate:"dive,required"`
-	Environment  string          `json:"environment" validate:"required"`
-	ProjectName  string          `json:"project_name"`
+	Name         string                    `json:"name" validate:"required"`
+	Type         featureflagmodel.FlagType `json:"type" validate:"required,oneof=boolean json string number"`
+	DefaultValue string                    `json:"default_value" validate:"required"`
+	Rules        []featureflagmodel.Rule   `json:"rules" validate:"dive,required"`
+	Environment  string                    `json:"environment" validate:"required"`
+	ProjectName  string                    `json:"project_name"`
 }
 
 type PatchFeatureFlagRequest struct {
-	DefaultValue string        `json:"default_value"`
-	Rules        []models.Rule `json:"rules" validate:"dive,required"`
+	DefaultValue string                  `json:"default_value"`
+	Rules        []featureflagmodel.Rule `json:"rules" validate:"dive,required"`
 }
 
 type ListFeatureFlagResponse struct {
-	Data     []models.FeatureFlagRecord `json:"data"`
-	Page     int                        `json:"page"`
-	PageSize int                        `json:"page_size"`
-	Total    int                        `json:"total"`
+	Data     []featureflagmodel.FeatureFlagRecord `json:"data"`
+	Page     int                                  `json:"page"`
+	PageSize int                                  `json:"page_size"`
+	Total    int                                  `json:"total"`
 }
 
 func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
@@ -80,7 +82,7 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organization, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -93,7 +95,7 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organization, models.ReadOnly)
+	permission := api_utils.UserHasPermission(userID, organization, organizationmodel.ReadOnly)
 	if !permission {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", api_errors.ForbiddenError),
@@ -105,9 +107,12 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 		)
 	}
 
-	model := models.NewFeatureFlagModel(ffh.db)
+	model := featureflagmodel.New(ffh.db)
 
-	featureFlags, err := model.FindMany(context.Background(), organizationID, page, limit)
+	featureFlags, err := model.FindMany(context.Background(), organizationID, page, limit, bson.D{{
+		Key:   "timestamps.created_at",
+		Value: -1,
+	}})
 	if err != nil {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
@@ -152,7 +157,7 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -164,7 +169,7 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", api_errors.ForbiddenError),
@@ -200,8 +205,8 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	featureFlagModel := models.NewFeatureFlagModel(ffh.db)
-	featureFlagRecord := models.NewFeatureFlagRecord(
+	featureFlagModel := featureflagmodel.New(ffh.db)
+	featureFlagRecord := featureflagmodel.NewFeatureFlagRecord(
 		request.Name,
 		request.DefaultValue,
 		request.Type,
@@ -223,11 +228,11 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	timelineModel := models.NewTimelineModel(ffh.db)
+	timelineModel := timelinemodel.New(ffh.db)
 	_, err = timelineModel.InsertOne(context.Background(),
-		&models.TimelineRecord{
+		&timelinemodel.TimelineRecord{
 			FeatureFlagID: featureFlagID,
-			Entries:       []models.TimelineEntry{},
+			Entries:       []timelinemodel.TimelineEntry{},
 		})
 	if err != nil {
 		ffh.logger.Debug("Client error",
@@ -240,9 +245,9 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	timelineEntry := models.NewTimelineEntry(
+	timelineEntry := timelinemodel.NewTimelineEntry(
 		userID,
-		models.Created,
+		timelinemodel.Created,
 	)
 	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
@@ -283,7 +288,7 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -295,7 +300,7 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Client error",
 			zap.String("cause", api_errors.ForbiddenError),
@@ -331,9 +336,9 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	featureFlagModel := models.NewFeatureFlagModel(ffh.db)
+	featureFlagModel := featureflagmodel.New(ffh.db)
 
-	revision := models.NewRevisionRecord(
+	revision := featureflagmodel.NewRevisionRecord(
 		request.DefaultValue,
 		request.Rules,
 		userID,
@@ -353,8 +358,8 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	timelineModel := models.NewTimelineModel(ffh.db)
-	timelineEntry := models.NewTimelineEntry(userID, models.RevisionCreated)
+	timelineModel := timelinemodel.New(ffh.db)
+	timelineEntry := timelinemodel.NewTimelineEntry(userID, timelinemodel.RevisionCreated)
 	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -394,7 +399,7 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -406,7 +411,7 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", api_errors.UnauthorizedError),
@@ -442,7 +447,7 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		)
 	}
 
-	model := models.NewFeatureFlagModel(ffh.db)
+	model := featureflagmodel.New(ffh.db)
 	featureFlagRecord, err := model.FindByID(context.Background(), featureFlagID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -457,12 +462,12 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 
 	var lastRevisionID primitive.ObjectID
 	for index, revision := range featureFlagRecord.Revisions {
-		if revision.Status == models.Live {
-			featureFlagRecord.Revisions[index].Status = models.Archived
+		if revision.Status == featureflagmodel.Live {
+			featureFlagRecord.Revisions[index].Status = featureflagmodel.Archived
 			lastRevisionID = revision.ID
 		}
-		if revision.ID == revisionID && revision.Status == models.Draft {
-			featureFlagRecord.Revisions[index].Status = models.Live
+		if revision.ID == revisionID && revision.Status == featureflagmodel.Draft {
+			featureFlagRecord.Revisions[index].Status = featureflagmodel.Live
 			featureFlagRecord.Revisions[index].LastRevisionID = lastRevisionID
 		}
 	}
@@ -488,8 +493,8 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		)
 	}
 
-	timelineModel := models.NewTimelineModel(ffh.db)
-	timelineEntry := models.NewTimelineEntry(userID, models.RevisionApproved)
+	timelineModel := timelinemodel.New(ffh.db)
+	timelineEntry := timelinemodel.NewTimelineEntry(userID, timelinemodel.RevisionApproved)
 	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -529,7 +534,7 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -541,7 +546,7 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", api_errors.ForbiddenError),
@@ -565,7 +570,7 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 		)
 	}
 
-	model := models.NewFeatureFlagModel(ffh.db)
+	model := featureflagmodel.New(ffh.db)
 	featureFlagRecord, err := model.FindByID(context.Background(), featureFlagID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -580,15 +585,15 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 
 	var newRevisionID primitive.ObjectID
 	for index, revision := range featureFlagRecord.Revisions {
-		if revision.Status == models.Live {
-			featureFlagRecord.Revisions[index].Status = models.Draft
+		if revision.Status == featureflagmodel.Live {
+			featureFlagRecord.Revisions[index].Status = featureflagmodel.Draft
 			newRevisionID = revision.LastRevisionID
 			featureFlagRecord.Revisions[index].LastRevisionID = primitive.NilObjectID
 		}
 	}
 	for index, revision := range featureFlagRecord.Revisions {
-		if revision.ID == newRevisionID && revision.Status == models.Archived {
-			featureFlagRecord.Revisions[index].Status = models.Live
+		if revision.ID == newRevisionID && revision.Status == featureflagmodel.Archived {
+			featureFlagRecord.Revisions[index].Status = featureflagmodel.Live
 		}
 	}
 	featureFlagRecord.Version--
@@ -612,8 +617,8 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 			api_errors.InternalServerError,
 		)
 	}
-	timelineModel := models.NewTimelineModel(ffh.db)
-	timelineEntry := models.NewTimelineEntry(userID, models.FeatureFlagRollback)
+	timelineModel := timelinemodel.New(ffh.db)
+	timelineEntry := timelinemodel.NewTimelineEntry(userID, timelinemodel.FeatureFlagRollback)
 	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -653,7 +658,7 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -665,7 +670,7 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", api_errors.ForbiddenError),
@@ -689,7 +694,7 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	model := models.NewFeatureFlagModel(ffh.db)
+	model := featureflagmodel.New(ffh.db)
 
 	err = model.UpdateOne(
 		context.Background(),
@@ -714,8 +719,8 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	timelineModel := models.NewTimelineModel(ffh.db)
-	timelineEntry := models.NewTimelineEntry(userID, models.FeatureFlagDeleted)
+	timelineModel := timelinemodel.New(ffh.db)
+	timelineEntry := timelinemodel.NewTimelineEntry(userID, timelinemodel.FeatureFlagDeleted)
 	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -757,7 +762,7 @@ func (ffh *FeatureFlagHandler) ToggleFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	organizationModel := models.NewOrganizationModel(ffh.db)
+	organizationModel := organizationmodel.New(ffh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -768,7 +773,7 @@ func (ffh *FeatureFlagHandler) ToggleFeatureFlag(c echo.Context) error {
 			api_errors.InternalServerError,
 		)
 	}
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		ffh.logger.Debug("Server error",
 			zap.String("cause", api_errors.ForbiddenError),
@@ -792,7 +797,7 @@ func (ffh *FeatureFlagHandler) ToggleFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	model := models.NewFeatureFlagModel(ffh.db)
+	model := featureflagmodel.New(ffh.db)
 	featureFlagRecord, err := model.FindByID(context.Background(), featureFlagID)
 	if err != nil {
 		ffh.logger.Debug("Server error",
@@ -831,8 +836,8 @@ func (ffh *FeatureFlagHandler) ToggleFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	timelineModel := models.NewTimelineModel(ffh.db)
-	timelineEntry := models.NewTimelineEntry(userID, fmt.Sprintf(models.FeatureFlagToggle, environmentName))
+	timelineModel := timelinemodel.New(ffh.db)
+	timelineEntry := timelinemodel.NewTimelineEntry(userID, fmt.Sprintf(timelinemodel.FeatureFlagToggle, environmentName))
 	err = timelineModel.UpdateOne(context.Background(), featureFlagID, timelineEntry)
 	if err != nil {
 		ffh.logger.Debug("Server error",

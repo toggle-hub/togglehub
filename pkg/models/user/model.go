@@ -1,4 +1,4 @@
-package models
+package usermodel
 
 import (
 	"context"
@@ -20,7 +20,7 @@ type UserModel struct {
 	collection *mongo.Collection
 }
 
-func NewUserModel(db *mongo.Database) *UserModel {
+func New(db *mongo.Database) *UserModel {
 	return &UserModel{
 		db:         db,
 		collection: db.Collection(UserCollectionName),

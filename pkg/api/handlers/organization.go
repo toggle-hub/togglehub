@@ -7,7 +7,8 @@ import (
 	"net/http"
 
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -77,7 +78,7 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 		)
 	}
 
-	userModel := models.NewUserModel(oh.db)
+	userModel := usermodel.New(oh.db)
 	user, err := userModel.FindByID(context.Background(), userID)
 	if err != nil {
 		oh.logger.Debug("Server error",
@@ -92,12 +93,12 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 
 	user.Password = ""
 
-	organization := models.NewOrganizationRecord(request.Name, []models.OrganizationMember{{
+	organization := organizationmodel.NewOrganizationRecord(request.Name, []organizationmodel.OrganizationMember{{
 		User:            *user,
-		PermissionLevel: models.Admin,
+		PermissionLevel: organizationmodel.Admin,
 	}})
 
-	model := models.NewOrganizationModel(oh.db)
+	model := organizationmodel.New(oh.db)
 
 	_, err = model.InsertOne(context.Background(), organization)
 
@@ -138,7 +139,7 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 			api_errors.BadRequestError,
 		)
 	}
-	organizationModel := models.NewOrganizationModel(oh.db)
+	organizationModel := organizationmodel.New(oh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		oh.logger.Debug("Server error",
@@ -150,7 +151,7 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, models.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		oh.logger.Debug("Client error",
 			zap.String("cause", api_errors.ForbiddenError),
@@ -175,7 +176,7 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 		)
 	}
 
-	project := models.Project{
+	project := organizationmodel.Project{
 		Name:        request.Name,
 		Description: request.Description,
 	}

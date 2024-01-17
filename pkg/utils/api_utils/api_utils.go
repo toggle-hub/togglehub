@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/oauth2"
@@ -122,20 +122,20 @@ func HandlerLogMessage(resource string, id primitive.ObjectID, c echo.Context) s
 
 func UserHasPermission(
 	userID primitive.ObjectID,
-	organization *models.OrganizationRecord,
-	permission models.PermissionLevelEnum,
+	organization *organizationmodel.OrganizationRecord,
+	permission organizationmodel.PermissionLevelEnum,
 ) bool {
 	for _, member := range organization.Members {
 		if member.User.ID == userID {
 			switch permission {
-			case models.Admin:
+			case organizationmodel.Admin:
 				return member.PermissionLevel == permission
-			case models.Collaborator:
-				return member.PermissionLevel == permission || member.PermissionLevel == models.Admin
-			case models.ReadOnly:
+			case organizationmodel.Collaborator:
+				return member.PermissionLevel == permission || member.PermissionLevel == organizationmodel.Admin
+			case organizationmodel.ReadOnly:
 				return member.PermissionLevel == permission ||
-					member.PermissionLevel == models.Collaborator ||
-					member.PermissionLevel == models.Admin
+					member.PermissionLevel == organizationmodel.Collaborator ||
+					member.PermissionLevel == organizationmodel.Admin
 			}
 		}
 	}

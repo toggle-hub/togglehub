@@ -11,9 +11,9 @@ import (
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
-	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
@@ -31,7 +31,7 @@ type SsoTestSuite struct {
 
 func (suite *SsoTestSuite) SetupTest() {
 	testCtx := context.Background()
-	if err := godotenv.Load("../../../../.env.test"); err != nil {
+	if err := godotenv.Load("../../../.env.test"); err != nil {
 		log.Panic(err)
 	}
 
@@ -70,7 +70,7 @@ func (suite *SsoTestSuite) TestSSoHandlerNewUserSuccess() {
 		},
 	}
 
-	model := models.NewUserModel(suite.db)
+	model := usermodel.New(suite.db)
 
 	request := httptest.NewRequest(http.MethodGet, "/callback", nil)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)

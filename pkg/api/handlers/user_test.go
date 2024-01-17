@@ -13,11 +13,12 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
-	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
@@ -78,10 +79,10 @@ func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	organization := fixtures.CreateOrganization("the company", []common.Tuple[*models.UserRecord, string]{
-		common.NewTuple[*models.UserRecord, models.PermissionLevelEnum](
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			models.Admin,
+			organizationmodel.Admin,
 		)}, suite.db)
 
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
@@ -97,7 +98,7 @@ func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), response))
-	assert.Equal(t, handlers.NewUserGetResponse(user, []models.OrganizationRecord{
+	assert.Equal(t, handlers.NewUserGetResponse(user, []organizationmodel.OrganizationRecord{
 		*organization,
 	}), response)
 }
@@ -105,7 +106,7 @@ func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
 func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 	t := suite.T()
 
-	model := models.NewUserModel(suite.db)
+	model := usermodel.New(suite.db)
 
 	user := fixtures.CreateUser("fizi@gmail.com", "", "", "", suite.db)
 
@@ -168,7 +169,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
 
 func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields() {
 	t := suite.T()
-	model := models.NewUserModel(suite.db)
+	model := usermodel.New(suite.db)
 
 	user := fixtures.CreateUser("fizi@gmail.com", "", "", "", suite.db)
 
