@@ -1,4 +1,4 @@
-package signuphandler_test
+package handlers_test
 
 import (
 	"bytes"
@@ -10,8 +10,8 @@ import (
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
-	signuphandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/sign_up"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
@@ -38,7 +38,7 @@ func (suite *SignUpHandlerTestSuite) SetupTest() {
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
 	logger, _ := logger.NewZapLogger()
-	h := signuphandler.New(suite.db, logger)
+	h := handlers.NewSignUpHandler(suite.db, logger)
 	suite.Server.POST("/signup", h.PostUser)
 }
 

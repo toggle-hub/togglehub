@@ -1,4 +1,4 @@
-package featureflaghandler_test
+package handlers_test
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
-	featureflaghandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/feature_flag"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
@@ -47,7 +47,7 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 	suite.Server = echo.New()
 
 	logger, _ := logger.NewZapLogger()
-	h := featureflaghandler.New(suite.db, logger)
+	h := handlers.NewFeatureFlagHandler(suite.db, logger)
 
 	testGroup := suite.Server.Group("", middlewares.AuthMiddleware, middlewares.OrganizationMiddleware)
 	testGroup.POST("/features", h.PostFeatureFlag)
@@ -91,7 +91,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 		Env:       "prd",
 		IsEnabled: true,
 	}
-	featureFlagRequest := featureflaghandler.PostFeatureFlagRequest{
+	featureFlagRequest := handlers.PostFeatureFlagRequest{
 		Name:         "cool feature",
 		Type:         featureflagmodel.Boolean,
 		DefaultValue: "true",
@@ -213,7 +213,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 		Env:       "prd",
 		IsEnabled: true,
 	}
-	revisionRule := featureflaghandler.PatchFeatureFlagRequest{
+	revisionRule := handlers.PatchFeatureFlagRequest{
 		DefaultValue: "true",
 		Rules: []featureflagmodel.Rule{
 			newRule,
@@ -355,11 +355,11 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response featureflaghandler.ListFeatureFlagResponse
+	var response handlers.ListFeatureFlagResponse
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.Equal(t, featureflaghandler.ListFeatureFlagResponse{
+	assert.Equal(t, handlers.ListFeatureFlagResponse{
 		Data: []featureflagmodel.FeatureFlagRecord{
 			*featureFlag2,
 			*featureFlag1,
@@ -400,11 +400,11 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response featureflaghandler.ListFeatureFlagResponse
+	var response handlers.ListFeatureFlagResponse
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.Equal(t, featureflaghandler.ListFeatureFlagResponse{
+	assert.Equal(t, handlers.ListFeatureFlagResponse{
 		Data: []featureflagmodel.FeatureFlagRecord{
 			*featureFlag,
 		},

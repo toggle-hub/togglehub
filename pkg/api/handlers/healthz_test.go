@@ -1,4 +1,4 @@
-package healthzhandler_test
+package handlers_test
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	healthzhandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/healthz"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -27,12 +27,12 @@ func (suite *HandlersSuite) TestHealthHanlderHealthy() {
 	recorder := httptest.NewRecorder()
 
 	c := suite.Server.NewContext(request, recorder)
-	var response healthzhandler.HealthResponse
+	var response handlers.HealthResponse
 
-	assert.NoError(suite.T(), healthzhandler.HealthHandler(c))
+	assert.NoError(suite.T(), handlers.HealthHandler(c))
 	assert.NoError(suite.T(), json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(suite.T(), http.StatusOK, recorder.Code)
-	assert.Equal(suite.T(), healthzhandler.HealthResponse{
+	assert.Equal(suite.T(), handlers.HealthResponse{
 		Alive: true,
 	}, response)
 }

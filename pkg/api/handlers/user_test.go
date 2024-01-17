@@ -1,4 +1,4 @@
-package userhandler_test
+package handlers_test
 
 import (
 	"bytes"
@@ -12,8 +12,8 @@ import (
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
-	userhandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/user"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
@@ -43,7 +43,7 @@ func (suite *UserHandlerTestSuite) SetupTest() {
 	suite.db = client.Database(config.TestDBName)
 	suite.Server = echo.New()
 	logger, _ := logger.NewZapLogger()
-	h := userhandler.New(suite.db, logger)
+	h := handlers.NewUserHandler(suite.db, logger)
 	testGroup := suite.Server.Group("/user", middlewares.AuthMiddleware)
 	testGroup.PATCH("", h.PatchUser)
 	testGroup.GET("", h.GetUser)
@@ -94,11 +94,11 @@ func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
-	response := new(userhandler.UserGetResponse)
+	response := new(handlers.UserGetResponse)
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), response))
-	assert.Equal(t, userhandler.NewUserGetResponse(user, []organizationmodel.OrganizationRecord{
+	assert.Equal(t, handlers.NewUserGetResponse(user, []organizationmodel.OrganizationRecord{
 		*organization,
 	}), response)
 }
@@ -110,7 +110,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 
 	user := fixtures.CreateUser("fizi@gmail.com", "", "", "", suite.db)
 
-	patchInfo := userhandler.UserPatchRequest{
+	patchInfo := handlers.UserPatchRequest{
 		FirstName: "fizi",
 		LastName:  "valores",
 	}
@@ -127,7 +127,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
-	var response userhandler.UserPatchResponse
+	var response handlers.UserPatchResponse
 
 	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
 	assert.NoError(t, err)
@@ -141,7 +141,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 
 func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
 	t := suite.T()
-	patchInfo := userhandler.UserPatchRequest{
+	patchInfo := handlers.UserPatchRequest{
 		FirstName: "fizi",
 		LastName:  "valores",
 	}
@@ -190,7 +190,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields(
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response userhandler.UserPatchResponse
+	var response handlers.UserPatchResponse
 
 	ur, err := model.FindByEmail(context.Background(), "fizi@gmail.com")
 	assert.NoError(t, err)
