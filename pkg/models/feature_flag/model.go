@@ -118,16 +118,21 @@ func NewFeatureFlagRecord(
 
 func NewRuleRecordList(rules []Rule) []Rule {
 	for index, rule := range rules {
-		updatedRule := NewRuleRecord(&rule)
-		rules[index] = *updatedRule
+		rules[index] = NewRuleRecord(rule)
 	}
 
 	return rules
 }
 
-func NewRuleRecord(rule *Rule) *Rule {
+func NewRuleRecord(rule Rule) Rule {
 	rule.ID = primitive.NewObjectID()
-	return rule
+	return Rule{
+		ID:        primitive.NewObjectID(),
+		Predicate: rule.Predicate,
+		Value:     rule.Value,
+		Env:       rule.Env,
+		IsEnabled: rule.IsEnabled,
+	}
 }
 
 func NewRevisionRecord(defaultValue string, rules []Rule, userID primitive.ObjectID) *Revision {
