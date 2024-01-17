@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
@@ -11,6 +12,7 @@ import (
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
@@ -22,6 +24,11 @@ type OrganizationHandler struct {
 
 type OrganizationPostRequest struct {
 	Name string `json:"name" validate:"required"`
+}
+
+type ProjectPostRequest struct {
+	Name        string `json:"name" validate:"required"`
+	Description string `json:"description" validate:"required"`
 }
 
 func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
@@ -106,6 +113,90 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, organization)
+}
+
+func (oh *OrganizationHandler) PostProject(c echo.Context) error {
+	userID, err := api_utils.GetUserFromContext(c)
+	if err != nil {
+		oh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationID, err := api_utils.GetOrganizationFromContext(c)
+	if err != nil {
+		oh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+	organizationModel := organizationmodel.New(oh.db)
+	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
+	if err != nil {
+		oh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
+	if !permission {
+		oh.logger.Debug("Client error",
+			zap.String("cause", api_errors.ForbiddenError),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusForbidden,
+			api_errors.ForbiddenError,
+		)
+	}
+
+	request := new(ProjectPostRequest)
+	log.Print("A")
+	if err := c.Bind(request); err != nil {
+		oh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	project := organizationmodel.Project{
+		Name:        request.Name,
+		Description: request.Description,
+	}
+
+	err = organizationModel.UpdateOne(
+		context.Background(),
+		bson.D{{Key: "_id", Value: organizationID}},
+		bson.D{{Key: "$push", Value: bson.M{"projects": project}}},
+	)
+	if err != nil {
+		oh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
+	return c.JSON(http.StatusOK, project)
 }
 
 func NewOrganizationHandler(db *mongo.Database, logger *zap.Logger) *OrganizationHandler {
