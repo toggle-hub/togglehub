@@ -3,7 +3,13 @@ package api
 import (
 	"os"
 
-	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
+	featureflaghandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/feature_flag"
+	healthzhandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/healthz"
+	organizationhandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/organization"
+	signinhandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/sign_in"
+	signuphandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/sign_up"
+	ssohandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/sso"
+	userhandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/user"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/storage"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
@@ -49,7 +55,7 @@ func NewApp(port string, storage *storage.MongoStorage, logger *zap.Logger) *App
 }
 
 func registerRoutes(app *App) {
-	app.server.GET("/healthz", handlers.HealthHandler)
+	app.server.GET("/healthz", healthzhandler.HealthHandler)
 
 	oauthConfig := &oauth2.Config{
 		RedirectURL:  os.Getenv("REDIRECT_URL"),
@@ -59,7 +65,7 @@ func registerRoutes(app *App) {
 		Endpoint:     google.Endpoint,
 	}
 
-	ssoHandler := handlers.NewSsoHandler(
+	ssoHandler := ssohandler.New(
 		app.storage.DB(),
 		oauthConfig,
 		app.logger,
@@ -69,21 +75,21 @@ func registerRoutes(app *App) {
 	app.server.POST("/oauth", ssoHandler.SignIn)
 	app.server.GET("/callback", ssoHandler.Callback)
 
-	signUpHandler := handlers.NewSignUpHandler(app.storage.DB(), app.logger)
+	signUpHandler := signuphandler.New(app.storage.DB(), app.logger)
 	app.server.POST("/signup", signUpHandler.PostUser)
 
-	signInHandler := handlers.NewSignInHandler(app.storage.DB(), app.logger)
+	signInHandler := signinhandler.New(app.storage.DB(), app.logger)
 	app.server.POST("/signin", signInHandler.PostSignIn)
 
-	userHandler := handlers.NewUserHandler(app.storage.DB(), app.logger)
+	userHandler := userhandler.New(app.storage.DB(), app.logger)
 	userGroup := app.server.Group("/user", middlewares.AuthMiddleware)
 	userGroup.GET("", userHandler.GetUser)
 	userGroup.PATCH("", userHandler.PatchUser)
 
-	organizationHandler := handlers.NewOrganizationHandler(app.storage.DB(), app.logger)
+	organizationHandler := organizationhandler.New(app.storage.DB(), app.logger)
 	app.server.POST("/organizations", middlewares.AuthMiddleware(organizationHandler.PostOrganization))
 
-	featureFlagHandler := handlers.NewFeatureFlagHandler(app.storage.DB(), app.logger)
+	featureFlagHandler := featureflaghandler.New(app.storage.DB(), app.logger)
 	featureGroup := app.server.Group("/features", middlewares.AuthMiddleware, middlewares.OrganizationMiddleware)
 	featureGroup.POST("", featureFlagHandler.PostFeatureFlag)
 	featureGroup.GET("", featureFlagHandler.ListFeatureFlags)

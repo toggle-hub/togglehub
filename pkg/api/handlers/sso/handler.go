@@ -1,4 +1,4 @@
-package handlers
+package ssohandler
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/config"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -27,7 +27,7 @@ type SsoHandler struct {
 	oauthClient api_utils.OAuthClient
 }
 
-func NewSsoHandler(
+func New(
 	db *mongo.Database,
 	oauthConfig *oauth2.Config,
 	logger *zap.Logger,
@@ -70,7 +70,7 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 			api_errors.InternalServerError,
 		)
 	}
-	userData := new(models.UserRecord)
+	userData := new(usermodel.UserRecord)
 	err = json.Unmarshal(userDataBytes, userData)
 	if err != nil {
 		sh.logger.Debug("Server error",
@@ -83,7 +83,7 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 		)
 	}
 
-	model := models.NewUserModel(sh.db)
+	model := usermodel.New(sh.db)
 	foundRecord, err := model.FindByEmail(context.Background(), userData.Email)
 	if err == nil {
 		token, err := api_utils.CreateJWT(foundRecord.ID, config.JWTExpireTime)

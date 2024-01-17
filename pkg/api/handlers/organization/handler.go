@@ -1,4 +1,4 @@
-package handlers
+package organizationhandler
 
 import (
 	"context"
@@ -6,7 +6,8 @@ import (
 	"net/http"
 
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -70,7 +71,7 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 		)
 	}
 
-	userModel := models.NewUserModel(oh.db)
+	userModel := usermodel.New(oh.db)
 	user, err := userModel.FindByID(context.Background(), userID)
 	if err != nil {
 		oh.logger.Debug("Server error",
@@ -85,12 +86,12 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 
 	user.Password = ""
 
-	organization := models.NewOrganizationRecord(request.Name, []models.OrganizationMember{{
+	organization := organizationmodel.NewOrganizationRecord(request.Name, []organizationmodel.OrganizationMember{{
 		User:            *user,
-		PermissionLevel: models.Admin,
+		PermissionLevel: organizationmodel.Admin,
 	}})
 
-	model := models.NewOrganizationModel(oh.db)
+	model := organizationmodel.New(oh.db)
 
 	_, err = model.InsertOne(context.Background(), organization)
 
@@ -107,7 +108,7 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 	return c.JSON(http.StatusCreated, organization)
 }
 
-func NewOrganizationHandler(db *mongo.Database, logger *zap.Logger) *OrganizationHandler {
+func New(db *mongo.Database, logger *zap.Logger) *OrganizationHandler {
 	return &OrganizationHandler{
 		db:     db,
 		logger: logger,

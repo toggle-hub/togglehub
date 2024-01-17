@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	"golang.org/x/oauth2"
 )
 
@@ -14,7 +14,7 @@ type MockHTTPClient struct{}
 
 func (c *MockHTTPClient) Get(_ string) (*http.Response, error) {
 	response := httptest.NewRecorder()
-	userInfo := models.UserRecord{
+	userInfo := usermodel.UserRecord{
 		SsoID: "12345",
 		Email: "test@test.com",
 	}

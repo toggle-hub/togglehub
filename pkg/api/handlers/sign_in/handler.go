@@ -1,4 +1,4 @@
-package handlers
+package signinhandler
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/config"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -52,7 +52,7 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 		)
 	}
 
-	model := models.NewUserModel(sh.db)
+	model := usermodel.New(sh.db)
 
 	ur, err := model.FindByEmail(context.Background(), request.Email)
 
@@ -111,7 +111,7 @@ func (sh *SignInHandler) PostSignIn(c echo.Context) error {
 	})
 }
 
-func NewSignInHandler(db *mongo.Database, logger *zap.Logger) *SignInHandler {
+func New(db *mongo.Database, logger *zap.Logger) *SignInHandler {
 	return &SignInHandler{
 		db:     db,
 		logger: logger,

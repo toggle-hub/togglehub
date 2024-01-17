@@ -1,4 +1,4 @@
-package models
+package featureflagmodel
 
 import (
 	"context"
@@ -19,7 +19,7 @@ type FeatureFlagModel struct {
 	collection *mongo.Collection
 }
 
-func NewFeatureFlagModel(db *mongo.Database) *FeatureFlagModel {
+func New(db *mongo.Database) *FeatureFlagModel {
 	return &FeatureFlagModel{
 		db:         db,
 		collection: db.Collection(FeatureFlagCollectionName),

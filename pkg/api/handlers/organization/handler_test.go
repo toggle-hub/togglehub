@@ -1,4 +1,4 @@
-package handlers_test
+package organizationhandler_test
 
 import (
 	"bytes"
@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
-	"github.com/Roll-Play/togglelabs/pkg/api/handlers/tests/fixtures"
+	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
+	organizationhandler "github.com/Roll-Play/togglelabs/pkg/api/handlers/organization"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
-	"github.com/Roll-Play/togglelabs/pkg/models"
+	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
 	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
@@ -41,7 +41,7 @@ func (suite *OrganizationHandlerTestSuite) SetupTest() {
 
 	logger, _ := logger.NewZapLogger()
 
-	h := handlers.NewOrganizationHandler(suite.db, logger)
+	h := organizationhandler.New(suite.db, logger)
 	suite.Server.POST("/organizations", middlewares.AuthMiddleware(h.PostOrganization))
 }
 
@@ -62,7 +62,7 @@ func (suite *OrganizationHandlerTestSuite) TearDownSuite() {
 func (suite *OrganizationHandlerTestSuite) TestPostOrganizationHandlerSuccess() {
 	t := suite.T()
 
-	model := models.NewOrganizationModel(suite.db)
+	model := organizationmodel.New(suite.db)
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
@@ -79,7 +79,7 @@ func (suite *OrganizationHandlerTestSuite) TestPostOrganizationHandlerSuccess() 
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response models.OrganizationRecord
+	var response organizationmodel.OrganizationRecord
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusCreated, recorder.Code)
