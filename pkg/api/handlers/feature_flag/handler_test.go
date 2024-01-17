@@ -361,8 +361,8 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Equal(t, featureflaghandler.ListFeatureFlagResponse{
 		Data: []featureflagmodel.FeatureFlagRecord{
-			*featureFlag1,
 			*featureFlag2,
+			*featureFlag1,
 		},
 		Page:     1,
 		PageSize: 10,
@@ -383,9 +383,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
-	featureFlag := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
+	fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
 		featureflagmodel.Boolean, nil, nil, suite.db)
-	fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
+	featureFlag := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
 		featureflagmodel.Boolean, nil, nil, suite.db)
 
 	request := httptest.NewRequest(
