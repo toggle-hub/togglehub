@@ -1,6 +1,21 @@
 {
   "cSpell.words": [
-    "bson",
-    "organizationmodel"
+    "bson", 
+    "featureflaghandler",
+    "featureflagmodel",
+    "healthz",
+    "healthzhandler",
+    "labstack",
+    "organizationhandler",
+    "organizationmodel",
+    "signin",
+    "signinhandler",
+    "signup",
+    "signuphandler",
+    "stretchr",
+    "timelinemodel",
+    "togglelabs",
+    "userhandler",
+    "usermodel"
   ]
 }
