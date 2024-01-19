@@ -140,6 +140,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	assert.Equal(t, []string{"my_tag"}, response.Tags)
 	assert.Equal(t, featureFlagRequest.ProjectName, response.Project)
 
+	organizationModel := organizationmodel.New(suite.db)
+	updatedOrganization, err := organizationModel.FindByID(context.Background(), organization.ID)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, updatedOrganization.Tags)
+	assert.Equal(t, []string{"my_tag"}, updatedOrganization.Tags)
+
 	assert.NotEmpty(t, response.Revisions)
 	responseRevision := response.Revisions[0]
 	assert.Equal(t, user.ID, responseRevision.UserID)
@@ -1041,6 +1047,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchTagSuccess() {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, updatedFlag.Tags)
 	assert.NotEqual(t, featureFlagRecord.UpdatedAt, updatedFlag.UpdatedAt)
+
+	organizationModel := organizationmodel.New(suite.db)
+	updatedOrganization, err := organizationModel.FindByID(context.Background(), organization.ID)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, updatedOrganization.Tags)
+	assert.Equal(t, expected, updatedOrganization.Tags)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) TestPatchTagForbidden() {

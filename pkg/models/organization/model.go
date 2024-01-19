@@ -145,6 +145,7 @@ func NewOrganizationRecord(name string, members []OrganizationMember) *Organizat
 		Name:     name,
 		Members:  members,
 		Projects: []Project{},
+		Tags:     []string{},
 		Timestamps: models.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),

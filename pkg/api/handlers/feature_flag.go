@@ -211,6 +211,23 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
+	err = organizationModel.UpdateOne(
+		context.Background(),
+		bson.D{{Key: "_id", Value: organizationID}},
+		bson.D{{Key: "$addToSet",
+			Value: bson.M{"tags": bson.M{"$each": request.Tags}},
+		}},
+	)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.Error(err),
+		)
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
 	featureFlagModel := featureflagmodel.New(ffh.db)
 	featureFlagRecord := featureflagmodel.NewFeatureFlagRecord(
 		request.Name,
@@ -945,6 +962,24 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlagTags(c echo.Context) error {
 		)
 	}
 
+	update := bson.D{{Key: "$addToSet",
+		Value: bson.M{"tags": bson.M{"$each": request.Tags}},
+	}}
+
+	err = organizationModel.UpdateOne(context.Background(),
+		bson.D{{Key: "_id", Value: organizationID}},
+		update,
+	)
+	if err != nil {
+		ffh.logger.Debug("Server error",
+			zap.Error(err),
+		)
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
 	model := featureflagmodel.New(ffh.db)
 
 	err = model.UpdateOne(
@@ -953,9 +988,7 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlagTags(c echo.Context) error {
 			{"_id": featureFlagID},
 			{"organization_id": organizationID},
 		}},
-		bson.D{{Key: "$addToSet",
-			Value: bson.M{"tags": bson.M{"$each": request.Tags}},
-		}},
+		update,
 	)
 	if err != nil {
 		ffh.logger.Debug("Server error",
