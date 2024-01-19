@@ -47,10 +47,10 @@ func (suite *OrganizationHandlerTestSuite) SetupTest() {
 
 	h := handlers.NewOrganizationHandler(suite.db, logger)
 	suite.Server.POST("/organizations", middlewares.AuthMiddleware(h.PostOrganization))
-	suite.Server.POST("/organizations/:organizationID", middlewares.AuthMiddleware(h.GetOrganization))
 
 	testGroup := suite.Server.Group("", middlewares.AuthMiddleware, middlewares.OrganizationMiddleware)
 	testGroup.POST("/projects", h.PostProject)
+	testGroup.GET("/organizations", middlewares.AuthMiddleware(h.GetOrganization))
 }
 
 func (suite *OrganizationHandlerTestSuite) AfterTest(_, _ string) {
@@ -201,12 +201,13 @@ func (suite *OrganizationHandlerTestSuite) TestGetOrganizationHandlerSuccess() {
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
-		http.MethodPost,
-		"/organizations/"+organization.ID.Hex(),
+		http.MethodGet,
+		"/organizations",
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
@@ -231,10 +232,6 @@ func (suite *OrganizationHandlerTestSuite) TestGetOrganizationHandlerUnauthorize
 	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
 		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
-			organizationmodel.Admin,
-		),
-		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
-			unauthorizedUser,
 			organizationmodel.ReadOnly,
 		),
 	}, suite.db)
@@ -243,12 +240,13 @@ func (suite *OrganizationHandlerTestSuite) TestGetOrganizationHandlerUnauthorize
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
-		http.MethodPost,
-		"/organizations/"+organization.ID.Hex(),
+		http.MethodGet,
+		"/organizations",
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)

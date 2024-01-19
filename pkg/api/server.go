@@ -82,8 +82,8 @@ func registerRoutes(app *App) {
 
 	organizationHandler := handlers.NewOrganizationHandler(app.storage.DB(), app.logger)
 	app.server.POST("/organizations", middlewares.AuthMiddleware(organizationHandler.PostOrganization))
+	app.server.GET("/organizations", middlewares.AuthMiddleware(organizationHandler.GetOrganization), middlewares.OrganizationMiddleware)
 	app.server.POST("/projects", middlewares.AuthMiddleware(organizationHandler.PostProject), middlewares.OrganizationMiddleware)
-	app.server.POST("/organizations/:organizationID", middlewares.AuthMiddleware(organizationHandler.GetOrganization))
 
 	featureFlagHandler := handlers.NewFeatureFlagHandler(app.storage.DB(), app.logger)
 	featureGroup := app.server.Group("/features", middlewares.AuthMiddleware, middlewares.OrganizationMiddleware)

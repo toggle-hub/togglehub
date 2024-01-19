@@ -13,7 +13,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
@@ -201,6 +200,7 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 }
 
 func (oh *OrganizationHandler) GetOrganization(c echo.Context) error {
+	log.Print("A")
 	userID, err := api_utils.GetUserFromContext(c)
 	if err != nil {
 		oh.logger.Debug("Client error",
@@ -213,7 +213,7 @@ func (oh *OrganizationHandler) GetOrganization(c echo.Context) error {
 		)
 	}
 
-	organizationID, err := primitive.ObjectIDFromHex(c.Param("organizationID"))
+	organizationID, err := api_utils.GetOrganizationFromContext(c)
 	if err != nil {
 		oh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
@@ -237,7 +237,7 @@ func (oh *OrganizationHandler) GetOrganization(c echo.Context) error {
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.ReadOnly)
 	if !permission {
 		oh.logger.Debug("Client error",
 			zap.String("cause", api_errors.ForbiddenError),
