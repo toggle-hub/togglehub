@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Roll-Play/togglelabs/pkg/models"
 	featureflagmodel "github.com/Roll-Play/togglelabs/pkg/models/feature_flag"
-	"github.com/Roll-Play/togglelabs/pkg/storage"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -21,12 +21,14 @@ func CreateFeatureFlag(
 	flagType featureflagmodel.FlagType,
 	revision []featureflagmodel.Revision,
 	environments []featureflagmodel.FeatureFlagEnvironment,
+	tags []string,
 	db *mongo.Database,
 ) *featureflagmodel.FeatureFlagRecord {
 	model := featureflagmodel.New(db)
 	if name == "" {
 		name = "feature"
 	}
+
 	if environments == nil {
 		environments = []featureflagmodel.FeatureFlagEnvironment{
 			{
@@ -35,11 +37,17 @@ func CreateFeatureFlag(
 			},
 		}
 	}
+
 	if revision == nil {
 		revision = []featureflagmodel.Revision{
 			*CreateRevision(userID, featureflagmodel.Draft, primitive.NilObjectID),
 		}
 	}
+
+	if tags == nil {
+		tags = []string{}
+	}
+
 	record := &featureflagmodel.FeatureFlagRecord{
 		OrganizationID: organizationID,
 		UserID:         userID,
@@ -47,7 +55,8 @@ func CreateFeatureFlag(
 		Name:           name,
 		Type:           flagType,
 		Revisions:      revision,
-		Timestamps: storage.Timestamps{
+		Tags:           tags,
+		Timestamps: models.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},

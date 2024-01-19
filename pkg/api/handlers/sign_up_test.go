@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/config"
@@ -97,13 +97,13 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.Equal(t, http.StatusConflict, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, response, api_errors.Error{
+	assert.Equal(t, response, apierrors.Error{
 		Error:   http.StatusText(http.StatusConflict),
-		Message: api_errors.EmailConflictError,
+		Message: apierrors.EmailConflictError,
 	})
 }
 

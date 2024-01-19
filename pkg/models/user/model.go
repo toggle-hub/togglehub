@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/config"
-	"github.com/Roll-Play/togglelabs/pkg/storage"
+	"github.com/Roll-Play/togglelabs/pkg/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -25,6 +25,57 @@ func New(db *mongo.Database) *UserModel {
 		db:         db,
 		collection: db.Collection(UserCollectionName),
 	}
+}
+
+type UserOrganization struct {
+	ID   primitive.ObjectID `json:"_id" bson:"_id"`
+	Name string             `json:"name" bson:"name"`
+}
+
+type UserWithOrganization struct {
+	ID            primitive.ObjectID `json:"_id" bson:"_id"`
+	SsoID         string             `json:"sso_id,omitempty" bson:"sso_id,omitempty"`
+	Email         string             `json:"email" bson:"email"`
+	FirstName     string             `json:"first_name,omitempty" bson:"first_name,omitempty"`
+	LastName      string             `json:"last_name,omitempty" bson:"last_name,omitempty"`
+	Organizations []UserOrganization `json:"organizations" bson:"organizations"`
+}
+
+func (um *UserModel) FindUserOrganization(ctx context.Context, id primitive.ObjectID) (*UserWithOrganization, error) {
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{"_id": id}}},
+		{{Key: "$lookup", Value: bson.M{
+			"from":         "organization",
+			"localField":   "_id",
+			"foreignField": "members.user._id",
+			"as":           "organizations",
+		}}},
+		{{Key: "$project", Value: bson.M{
+			"_id":        1,
+			"email":      1,
+			"sso_id":     1,
+			"first_name": 1,
+			"last_name":  1,
+			"organizations": bson.M{
+				"_id":  1,
+				"name": 1,
+			},
+		}}},
+	}
+
+	user := new(UserWithOrganization)
+	cursor, err := um.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	cursor.Next(ctx)
+	if err := cursor.Decode(user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (um *UserModel) FindByID(ctx context.Context, id primitive.ObjectID) (*UserRecord, error) {
@@ -64,10 +115,15 @@ func (um *UserModel) InsertOne(ctx context.Context, record *UserRecord) (primiti
 func (um *UserModel) UpdateOne(
 	ctx context.Context,
 	id primitive.ObjectID,
-	newValues bson.D,
+	updateValues bson.D,
 ) (primitive.ObjectID, error) {
 	filter := bson.D{{Key: "_id", Value: id}}
-	update := bson.D{{Key: "$set", Value: newValues}}
+	updateValues = append(updateValues, bson.E{
+		Key:   "timestamps.updated_at",
+		Value: primitive.NewDateTimeFromTime(time.Now().UTC()),
+	})
+	update := bson.D{{Key: "$set", Value: updateValues}}
+
 	_, err := um.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return primitive.ObjectID{}, err
@@ -83,7 +139,7 @@ type UserRecord struct {
 	Password  string             `json:"password,omitempty" bson:"password,omitempty"`
 	FirstName string             `json:"first_name,omitempty" bson:"first_name,omitempty"`
 	LastName  string             `json:"last_name,omitempty" bson:"last_name,omitempty"`
-	storage.Timestamps
+	models.Timestamps
 }
 
 func NewUserRecord(email, password, firstName, lastName string) (*UserRecord, error) {
@@ -97,7 +153,7 @@ func NewUserRecord(email, password, firstName, lastName string) (*UserRecord, er
 		Password:  ep,
 		FirstName: firstName,
 		LastName:  lastName,
-		Timestamps: storage.Timestamps{
+		Timestamps: models.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		}}, nil

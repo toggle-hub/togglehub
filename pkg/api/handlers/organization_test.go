@@ -16,7 +16,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
 	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
-	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -65,7 +65,7 @@ func (suite *OrganizationHandlerTestSuite) TestPostOrganizationHandlerSuccess() 
 	model := organizationmodel.New(suite.db)
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	requestBody := []byte(`{

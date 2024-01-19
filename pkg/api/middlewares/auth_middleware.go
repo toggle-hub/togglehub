@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
-	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -26,8 +26,8 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		if authHeader == "" {
 			logger.Debug("Client error",
-				zap.String("cause", "missing Authorization header"))
-			return c.JSON(http.StatusUnauthorized, api_errors.Error{
+				zap.Error(errors.New("missing Authorization header")))
+			return c.JSON(http.StatusUnauthorized, apierrors.Error{
 				Error:   "missing Authorization header",
 				Message: http.StatusText(http.StatusUnauthorized),
 			})
@@ -39,7 +39,7 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				logger.Debug("Client error",
-					zap.String("cause", ErrInvalidSignMethod.Error()))
+					zap.Error(ErrInvalidSignMethod))
 				return nil, ErrInvalidSignMethod
 			}
 			return secretKey, nil
@@ -47,8 +47,8 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		if err != nil {
 			logger.Debug("Client error",
-				zap.String("cause", err.Error()))
-			return c.JSON(http.StatusUnauthorized, api_errors.Error{
+				zap.Error(err))
+			return c.JSON(http.StatusUnauthorized, apierrors.Error{
 				Error:   ErrInvalidToken.Error(),
 				Message: http.StatusText(http.StatusUnauthorized),
 			})
@@ -58,8 +58,8 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			sub, _ := claims["sub"].(string)
 			userID, err := primitive.ObjectIDFromHex(sub)
 			if err != nil {
-				log.Println(api_utils.HandlerErrorLogMessage(err, c))
-				return c.JSON(http.StatusUnauthorized, api_errors.Error{
+				log.Println(apiutils.HandlerErrorLogMessage(err, c))
+				return c.JSON(http.StatusUnauthorized, apierrors.Error{
 					Error:   "invalid token sub",
 					Message: http.StatusText(http.StatusUnauthorized),
 				})
@@ -69,8 +69,8 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return next(c)
 		}
 
-		log.Println(api_utils.HandlerErrorLogMessage(ErrInvalidToken, c))
-		return c.JSON(http.StatusUnauthorized, api_errors.Error{
+		log.Println(apiutils.HandlerErrorLogMessage(ErrInvalidToken, c))
+		return c.JSON(http.StatusUnauthorized, apierrors.Error{
 			Error:   ErrInvalidToken.Error(),
 			Message: http.StatusText(http.StatusUnauthorized),
 		})

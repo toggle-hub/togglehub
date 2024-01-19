@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
@@ -21,7 +21,7 @@ import (
 	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
 	timelinemodel "github.com/Roll-Play/togglelabs/pkg/models/timeline"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
-	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -66,6 +66,7 @@ func (suite *FeatureFlagHandlerTestSuite) SetupTest() {
 		h.RollbackFeatureFlagVersion,
 	)
 	testGroup.PATCH("/features/:featureFlagID/toggle", h.ToggleFeatureFlag)
+	testGroup.PATCH("/features/:featureFlagID/tags", h.PatchFeatureFlagTags)
 }
 
 func (suite *FeatureFlagHandlerTestSuite) AfterTest(_, _ string) {
@@ -98,6 +99,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 		Rules: []featureflagmodel.Rule{
 			rule,
 		},
+		Tags:        []string{"my_tag"},
 		Environment: "prod",
 	}
 	requestBody, err := json.Marshal(featureFlagRequest)
@@ -111,7 +113,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 		),
 	}, suite.db)
 
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -134,6 +136,8 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	assert.Equal(t, organization.ID, response.OrganizationID)
 	assert.Equal(t, featureFlagRequest.Type, response.Type)
 	assert.Equal(t, featureFlagRequest.Environment, response.Environments[0].Name)
+	assert.NotEmpty(t, response.Tags)
+	assert.Equal(t, []string{"my_tag"}, response.Tags)
 
 	assert.NotEmpty(t, response.Revisions)
 	responseRevision := response.Revisions[0]
@@ -167,7 +171,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 		),
 	}, suite.db)
 
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -182,13 +186,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: api_errors.ForbiddenError,
+		Message: apierrors.ForbiddenError,
 	}, response)
 }
 
@@ -205,7 +209,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
 
 	newRule := featureflagmodel.Rule{
 		Predicate: "attr: newRule",
@@ -231,7 +235,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 	requestBody, err := json.Marshal(revisionRule)
 	assert.NoError(t, err)
 
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -257,6 +261,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 
 	savedFeatureFlag, err := featureFlagModel.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
+	assert.NotEqual(t, featureFlagRecord.UpdatedAt, savedFeatureFlag.UpdatedAt)
 	savedRevisions := savedFeatureFlag.Revisions
 	assert.Equal(t, len(savedRevisions), 2)
 	// Make sure original revision is the same
@@ -300,7 +305,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 			organizationmodel.ReadOnly,
 		),
 	}, suite.db)
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -315,13 +320,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: api_errors.ForbiddenError,
+		Message: apierrors.ForbiddenError,
 	}, response)
 }
 
@@ -335,13 +340,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 			organizationmodel.Admin,
 		),
 	}, suite.db)
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	featureFlag1 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, nil, suite.db)
 	featureFlag2 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
-		featureflagmodel.Boolean, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, nil, suite.db)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -380,13 +385,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 			organizationmodel.Admin,
 		),
 	}, suite.db)
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, nil, suite.db)
 	featureFlag := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
-		featureflagmodel.Boolean, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, nil, suite.db)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -431,7 +436,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 	userID, err := userModel.InsertOne(context.Background(), user)
 	assert.NoError(t, err)
 
-	token, err := api_utils.CreateJWT(userID, time.Second*120)
+	token, err := apiutils.CreateJWT(userID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -446,13 +451,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: api_errors.ForbiddenError,
+		Message: apierrors.ForbiddenError,
 	}, response)
 }
 
@@ -475,7 +480,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 			*willBeOriginalRevision,
 			*willBeLiveRevision,
 			*willBeControlRevision,
-		}, nil, suite.db)
+		}, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -485,7 +490,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
 	assert.NoError(t, err)
 
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -537,7 +542,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
 
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
 
-	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -553,13 +558,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
-		Message: api_errors.UnauthorizedError,
+		Message: apierrors.UnauthorizedError,
 	}, response)
 }
 
@@ -579,7 +584,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorizedMissingP
 		),
 	}, suite.db)
 
-	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -595,13 +600,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorizedMissingP
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
-		Message: api_errors.UnauthorizedError,
+		Message: apierrors.UnauthorizedError,
 	}, response)
 }
 
@@ -618,7 +623,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	wrongRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, revision.ID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision, *wrongRevision}, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision, *wrongRevision}, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -628,7 +633,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
 	assert.NoError(t, err)
 
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -679,7 +684,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorized() {
 
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
 
-	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -695,13 +700,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorized() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: api_errors.ForbiddenError,
+		Message: apierrors.ForbiddenError,
 	}, response)
 }
 
@@ -721,7 +726,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorizedMissingPermiss
 		),
 	}, suite.db)
 
-	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -737,13 +742,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorizedMissingPermiss
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: api_errors.ForbiddenError,
+		Message: apierrors.ForbiddenError,
 	}, response)
 }
 
@@ -759,7 +764,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -769,7 +774,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
 	assert.NoError(t, err)
 
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -815,9 +820,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 	}, suite.db)
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
 
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -831,13 +836,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: api_errors.ForbiddenError,
+		Message: apierrors.ForbiddenError,
 	}, response)
 }
 
@@ -861,7 +866,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 				Name:      "dev",
 				IsEnabled: true,
 			},
-		}, suite.db)
+		}, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -871,7 +876,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
 	assert.NoError(t, err)
 
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -917,7 +922,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleUnauthorized() {
 
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
 
-	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -933,13 +938,13 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleUnauthorized() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: api_errors.ForbiddenError,
+		Message: apierrors.ForbiddenError,
 	}, response)
 }
 
@@ -959,7 +964,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleMissingPermission
 		),
 	}, suite.db)
 
-	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -975,13 +980,117 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleMissingPermission
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusForbidden),
-		Message: api_errors.ForbiddenError,
+		Message: apierrors.ForbiddenError,
+	}, response)
+}
+
+func (suite *FeatureFlagHandlerTestSuite) TestPatchTagSuccess() {
+	t := suite.T()
+
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
+			user,
+			organizationmodel.Admin,
+		),
+	}, suite.db)
+
+	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
+	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
+
+	timelineModel := timelinemodel.New(suite.db)
+	timelineRecord := &timelinemodel.TimelineRecord{
+		FeatureFlagID: featureFlagRecord.ID,
+		Entries:       []timelinemodel.TimelineEntry{},
+	}
+	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
+	assert.NoError(t, err)
+	expected := []string{"fizi", "valores"}
+	requestBody, err := json.Marshal(handlers.PatchFeatureFlagTagsRequest{
+		Tags: expected,
+	})
+	assert.NoError(t, err)
+
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	assert.NoError(t, err)
+
+	request := httptest.NewRequest(
+		http.MethodPatch,
+		"/features/"+featureFlagRecord.ID.Hex()+"/tags",
+		bytes.NewBuffer(requestBody),
+	)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
+	recorder := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(recorder, request)
+
+	assert.Equal(t, http.StatusNoContent, recorder.Code)
+
+	model := featureflagmodel.New(suite.db)
+	updatedFlag, err := model.FindByID(context.Background(), featureFlagRecord.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, updatedFlag.Tags)
+	assert.NotEqual(t, featureFlagRecord.UpdatedAt, updatedFlag.UpdatedAt)
+}
+
+func (suite *FeatureFlagHandlerTestSuite) TestPatchTagForbidden() {
+	t := suite.T()
+
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
+			user,
+			organizationmodel.ReadOnly,
+		),
+	}, suite.db)
+
+	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
+	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
+
+	timelineModel := timelinemodel.New(suite.db)
+	timelineRecord := &timelinemodel.TimelineRecord{
+		FeatureFlagID: featureFlagRecord.ID,
+		Entries:       []timelinemodel.TimelineEntry{},
+	}
+	_, err := timelineModel.InsertOne(context.Background(), timelineRecord)
+	assert.NoError(t, err)
+
+	requestBody, err := json.Marshal(handlers.PatchFeatureFlagTagsRequest{
+		Tags: []string{"fizi", "valores"},
+	})
+	assert.NoError(t, err)
+
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
+	assert.NoError(t, err)
+
+	request := httptest.NewRequest(
+		http.MethodPatch,
+		"/features/"+featureFlagRecord.ID.Hex()+"/tags",
+		bytes.NewBuffer(requestBody),
+	)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
+	recorder := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(recorder, request)
+	var response apierrors.Error
+
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusForbidden, recorder.Code)
+	assert.Equal(t, apierrors.Error{
+		Error:   http.StatusText(http.StatusForbidden),
+		Message: apierrors.ForbiddenError,
 	}, response)
 }
 

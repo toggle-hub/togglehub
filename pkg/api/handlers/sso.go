@@ -9,10 +9,10 @@ import (
 	"os"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
-	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
@@ -23,16 +23,16 @@ type SsoHandler struct {
 	oauthConfig *oauth2.Config
 	db          *mongo.Database
 	logger      *zap.Logger
-	httpClient  api_utils.BaseHTTPClient
-	oauthClient api_utils.OAuthClient
+	httpClient  apiutils.BaseHTTPClient
+	oauthClient apiutils.OAuthClient
 }
 
 func NewSsoHandler(
 	db *mongo.Database,
 	oauthConfig *oauth2.Config,
 	logger *zap.Logger,
-	httpClient api_utils.BaseHTTPClient,
-	oauthClient api_utils.OAuthClient,
+	httpClient apiutils.BaseHTTPClient,
+	oauthClient apiutils.OAuthClient,
 ) *SsoHandler {
 	return &SsoHandler{
 		oauthConfig: oauthConfig,
@@ -62,39 +62,39 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 
 	if err != nil {
 		sh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 	userData := new(usermodel.UserRecord)
 	err = json.Unmarshal(userDataBytes, userData)
 	if err != nil {
 		sh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
 	model := usermodel.New(sh.db)
 	foundRecord, err := model.FindByEmail(context.Background(), userData.Email)
 	if err == nil {
-		token, err := api_utils.CreateJWT(foundRecord.ID, config.JWTExpireTime)
+		token, err := apiutils.CreateJWT(foundRecord.ID, config.JWTExpireTime)
 		if err != nil {
 			sh.logger.Debug("Server error",
-				zap.String("cause", err.Error()),
+				zap.Error(err),
 			)
-			return api_errors.CustomError(
+			return apierrors.CustomError(
 				c,
 				http.StatusInternalServerError,
-				api_errors.InternalServerError,
+				apierrors.InternalServerError,
 			)
 		}
 
@@ -110,24 +110,24 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	objectID, err := model.InsertOne(context.Background(), userData)
 	if err != nil {
 		sh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
-	token, err := api_utils.CreateJWT(objectID, config.JWTExpireTime)
+	token, err := apiutils.CreateJWT(objectID, config.JWTExpireTime)
 	if err != nil {
 		sh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 

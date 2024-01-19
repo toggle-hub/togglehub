@@ -1,4 +1,4 @@
-package api_utils
+package apiutils
 
 import (
 	"context"
@@ -20,7 +20,7 @@ type BaseHTTPClient interface {
 type HTTPClient struct{}
 
 func (c *HTTPClient) Get(url string) (*http.Response, error) {
-	return http.Get(url) //nolint
+	return http.Get(url)
 }
 
 type OAuthClient interface {

@@ -6,7 +6,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
 	"github.com/Roll-Play/togglelabs/pkg/storage"
-	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
@@ -63,8 +63,8 @@ func registerRoutes(app *App) {
 		app.storage.DB(),
 		oauthConfig,
 		app.logger,
-		&api_utils.HTTPClient{},
-		api_utils.NewOAuthClient(oauthConfig),
+		&apiutils.HTTPClient{},
+		apiutils.NewOAuthClient(oauthConfig),
 	)
 	app.server.POST("/oauth", ssoHandler.SignIn)
 	app.server.GET("/callback", ssoHandler.Callback)
@@ -101,4 +101,5 @@ func registerRoutes(app *App) {
 		"/:featureFlagID/toggle",
 		featureFlagHandler.ToggleFeatureFlag,
 	)
+	featureGroup.PATCH("/:featureFlagID/tags", featureFlagHandler.PatchFeatureFlagTags)
 }
