@@ -116,7 +116,7 @@ func (um *UserModel) UpdateOne(
 	ctx context.Context,
 	id primitive.ObjectID,
 	updateValues bson.D,
-) (primitive.ObjectID, error) {
+) error {
 	filter := bson.D{{Key: "_id", Value: id}}
 	updateValues = append(updateValues, bson.E{
 		Key:   "timestamps.updated_at",
@@ -126,10 +126,10 @@ func (um *UserModel) UpdateOne(
 
 	_, err := um.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return primitive.ObjectID{}, err
+		return err
 	}
 
-	return id, nil
+	return nil
 }
 
 type UserRecord struct {

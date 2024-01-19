@@ -79,6 +79,19 @@ func (om *OrganizationModel) FindByMember(
 		{Key: "members.user._id", Value: memberID}})
 }
 
+func (om *OrganizationModel) UpdateOne(
+	ctx context.Context,
+	filter,
+	update bson.D,
+) error {
+	_, err := om.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type PermissionLevelEnum = string
 
 const (
@@ -112,6 +125,7 @@ type OrganizationRecord struct {
 	Members      []OrganizationMember `json:"members" bson:"members"`
 	Invites      []OrganizationInvite `json:"invites" bson:"invites"`
 	Environments []Environment        `json:"environments,omitempty" bson:"environments,omitempty"`
+	Projects     []Project            `json:"projects" bson:"projects"`
 	Tags         []string             `json:"tags" bson:"tags"`
 	models.Timestamps
 }
@@ -121,10 +135,16 @@ type Environment struct {
 	Description string `json:"description" bson:"description"`
 }
 
+type Project struct {
+	Name        string `json:"name" bson:"name"`
+	Description string `json:"description" bson:"description"`
+}
+
 func NewOrganizationRecord(name string, members []OrganizationMember) *OrganizationRecord {
 	return &OrganizationRecord{
-		Name:    name,
-		Members: members,
+		Name:     name,
+		Members:  members,
+		Projects: []Project{},
 		Timestamps: models.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),

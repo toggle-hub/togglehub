@@ -146,7 +146,7 @@ func (uh *UserHandler) PatchUser(c echo.Context) error {
 		)
 	}
 
-	objectID, err := model.UpdateOne(
+	err = model.UpdateOne(
 		context.Background(),
 		userID,
 		bson.D{
@@ -166,7 +166,7 @@ func (uh *UserHandler) PatchUser(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, UserPatchResponse{
-		ID:        objectID,
+		ID:        userID,
 		Email:     ur.Email,
 		FirstName: request.FirstName,
 		LastName:  request.LastName,

@@ -39,6 +39,7 @@ type PostFeatureFlagRequest struct {
 	Rules        []featureflagmodel.Rule   `json:"rules" validate:"dive,required"`
 	Tags         []string                  `json:"tags"`
 	Environment  string                    `json:"environment" validate:"required"`
+	ProjectName  string                    `json:"project_name"`
 }
 
 type PatchFeatureFlagRequest struct {
@@ -219,6 +220,7 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		organizationID,
 		userID,
 		request.Environment,
+		request.ProjectName,
 		request.Tags,
 	)
 
@@ -348,7 +350,7 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlag(c echo.Context) error {
 		request.Rules,
 		userID,
 	)
-	_, err = featureFlagModel.UpdateOne(
+	err = featureFlagModel.UpdateOne(
 		context.Background(),
 		bson.M{"$and": []bson.M{
 			{"_id": featureFlagID},
@@ -493,7 +495,7 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 			},
 		},
 	}
-	_, err = model.UpdateOne(context.Background(), filters, newValues)
+	err = model.UpdateOne(context.Background(), filters, newValues)
 	if err != nil {
 		ffh.logger.Debug("Server error",
 			zap.Error(err),
@@ -621,7 +623,7 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 			},
 		},
 	}
-	_, err = model.UpdateOne(context.Background(), filters, newValues)
+	err = model.UpdateOne(context.Background(), filters, newValues)
 	if err != nil {
 		ffh.logger.Debug("Server error",
 			zap.Error(err),
@@ -710,7 +712,7 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 
 	model := featureflagmodel.New(ffh.db)
 
-	objectID, err := model.UpdateOne(
+	err = model.UpdateOne(
 		context.Background(),
 		bson.M{"$and": []bson.M{
 			{"_id": featureFlagID},
@@ -750,7 +752,7 @@ func (ffh *FeatureFlagHandler) DeleteFeatureFlag(c echo.Context) error {
 	}
 
 	ffh.logger.Info("Soft deleted feature flag",
-		zap.String("_id", objectID.Hex()))
+		zap.String("_id", featureFlagID.Hex()))
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -845,7 +847,7 @@ func (ffh *FeatureFlagHandler) ToggleFeatureFlag(c echo.Context) error {
 			},
 		},
 	}
-	_, err = model.UpdateOne(context.Background(), filters, newValues)
+	err = model.UpdateOne(context.Background(), filters, newValues)
 	if err != nil {
 		ffh.logger.Debug("Server error",
 			zap.Error(err),
@@ -945,7 +947,7 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlagTags(c echo.Context) error {
 
 	model := featureflagmodel.New(ffh.db)
 
-	objectID, err := model.UpdateOne(
+	err = model.UpdateOne(
 		context.Background(),
 		bson.M{"$and": []bson.M{
 			{"_id": featureFlagID},
@@ -967,6 +969,6 @@ func (ffh *FeatureFlagHandler) PatchFeatureFlagTags(c echo.Context) error {
 	}
 
 	ffh.logger.Info("Feature flag updated",
-		zap.String("_id", objectID.Hex()))
+		zap.String("_id", featureFlagID.Hex()))
 	return c.NoContent(http.StatusNoContent)
 }
