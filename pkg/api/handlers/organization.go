@@ -6,10 +6,10 @@ import (
 	"log"
 	"net/http"
 
-	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
-	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
@@ -35,11 +35,11 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 	request := new(OrganizationPostRequest)
 	if err := c.Bind(request); err != nil {
 		oh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusBadRequest,
-			api_errors.BadRequestError,
+			apierrors.BadRequestError,
 		)
 	}
 
@@ -47,34 +47,34 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 
 	if err := validate.Struct(request); err != nil {
 		oh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusBadRequest,
-			api_errors.BadRequestError,
+			apierrors.BadRequestError,
 		)
 	}
 
-	userID, err := api_utils.GetUserFromContext(c)
+	userID, err := apiutils.GetUserFromContext(c)
 	if err != nil {
 		// Should never happen but better safe than sorry
-		if errors.Is(err, api_utils.ErrNotAuthenticated) {
+		if errors.Is(err, apiutils.ErrNotAuthenticated) {
 			oh.logger.Debug("Client error",
-				zap.String("cause", err.Error()),
+				zap.Error(err),
 			)
-			return api_errors.CustomError(
+			return apierrors.CustomError(
 				c,
 				http.StatusUnauthorized,
-				api_errors.UnauthorizedError,
+				apierrors.UnauthorizedError,
 			)
 		}
 
 		oh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
@@ -82,12 +82,12 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 	user, err := userModel.FindByID(context.Background(), userID)
 	if err != nil {
 		oh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
@@ -104,11 +104,11 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 
 	if err != nil {
 		oh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
@@ -116,27 +116,27 @@ func (oh *OrganizationHandler) PostOrganization(c echo.Context) error {
 }
 
 func (oh *OrganizationHandler) PostProject(c echo.Context) error {
-	userID, err := api_utils.GetUserFromContext(c)
+	userID, err := apiutils.GetUserFromContext(c)
 	if err != nil {
 		oh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return api_errors.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusBadRequest,
-			api_errors.BadRequestError,
+			apierrors.BadRequestError,
 		)
 	}
 
-	organizationID, err := api_utils.GetOrganizationFromContext(c)
+	organizationID, err := apiutils.GetOrganizationFromContext(c)
 	if err != nil {
 		oh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return api_errors.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusBadRequest,
-			api_errors.BadRequestError,
+			apierrors.BadRequestError,
 		)
 	}
 	organizationModel := organizationmodel.New(oh.db)
@@ -145,21 +145,21 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 		oh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
-	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
+	permission := apiutils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
 	if !permission {
 		oh.logger.Debug("Client error",
-			zap.String("cause", api_errors.ForbiddenError),
+			zap.String("cause", apierrors.ForbiddenError),
 		)
-		return api_errors.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusForbidden,
-			api_errors.ForbiddenError,
+			apierrors.ForbiddenError,
 		)
 	}
 
@@ -169,10 +169,10 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 		oh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
 		)
-		return api_errors.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusBadRequest,
-			api_errors.BadRequestError,
+			apierrors.BadRequestError,
 		)
 	}
 
@@ -190,9 +190,9 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 		oh.logger.Debug("Server error",
 			zap.String("cause", err.Error()),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 

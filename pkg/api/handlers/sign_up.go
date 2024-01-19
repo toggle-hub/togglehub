@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
-	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -36,11 +37,11 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	request := new(SignUpRequest)
 	if err := c.Bind(request); err != nil {
 		sh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusBadRequest,
-			api_errors.BadRequestError,
+			apierrors.BadRequestError,
 		)
 	}
 
@@ -48,11 +49,11 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 
 	if err := validate.Struct(request); err != nil {
 		sh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusBadRequest,
-			api_errors.BadRequestError,
+			apierrors.BadRequestError,
 		)
 	}
 
@@ -60,44 +61,44 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	_, err := model.FindByEmail(context.Background(), request.Email)
 	if err == nil {
 		sh.logger.Debug("Client error",
-			zap.String("cause", api_errors.EmailConflictError),
+			zap.Error(errors.New(apierrors.EmailConflictError)),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusConflict,
-			api_errors.EmailConflictError,
+			apierrors.EmailConflictError,
 		)
 	}
 
 	ur, err := usermodel.NewUserRecord(request.Email, request.Password, "", "")
 	if err != nil {
 		sh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
 	objectID, err := model.InsertOne(context.Background(), ur)
 	if err != nil {
 		sh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
-	token, err := api_utils.CreateJWT(objectID, config.JWTExpireTime)
+	token, err := apiutils.CreateJWT(objectID, config.JWTExpireTime)
 	if err != nil {
 		sh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 	sh.logger.Debug("Created user",

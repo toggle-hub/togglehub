@@ -20,7 +20,7 @@ import (
 	featureflagmodel "github.com/Roll-Play/togglelabs/pkg/models/feature_flag"
 	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
-	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -72,7 +72,7 @@ func (suite *OrganizationHandlerTestSuite) TestPostOrganizationHandlerSuccess() 
 	model := organizationmodel.New(suite.db)
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	requestBody := []byte(`{
@@ -116,7 +116,7 @@ func (suite *OrganizationHandlerTestSuite) TestPostProjectHandlerSuccess() {
 	requestBody, err := json.Marshal(newProject)
 	assert.NoError(t, err)
 
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(
@@ -160,7 +160,7 @@ func (suite *OrganizationHandlerTestSuite) TestPostProjectUnauthorized() {
 		),
 	}, suite.db)
 
-	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(

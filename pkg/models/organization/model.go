@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Roll-Play/togglelabs/pkg/models"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
-	"github.com/Roll-Play/togglelabs/pkg/storage"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -62,16 +62,10 @@ func (om *OrganizationModel) FindMany(
 	if err != nil {
 		return EmptyOrganizationRecordList, err
 	}
-
 	defer cursor.Close(ctx)
 
-	for cursor.Next(ctx) {
-		record := new(OrganizationRecord)
-		if err := cursor.Decode(record); err != nil {
-			return EmptyOrganizationRecordList, err
-		}
-
-		records = append(records, *record)
+	if err := cursor.All(ctx, &records); err != nil {
+		return EmptyOrganizationRecordList, err
 	}
 
 	return records, nil
@@ -130,9 +124,10 @@ type OrganizationRecord struct {
 	Name         string               `json:"name" bson:"name"`
 	Members      []OrganizationMember `json:"members" bson:"members"`
 	Invites      []OrganizationInvite `json:"invites" bson:"invites"`
-	Environments []Environment
-	Projects     []Project
-	storage.Timestamps
+	Environments []Environment        `json:"environments,omitempty" bson:"environments,omitempty"`
+	Projects     []Project            `json:"projects" bson:"projects"`
+	Tags         []string             `json:"tags" bson:"tags"`
+	models.Timestamps
 }
 
 type Environment struct {
@@ -150,7 +145,8 @@ func NewOrganizationRecord(name string, members []OrganizationMember) *Organizat
 		Name:     name,
 		Members:  members,
 		Projects: []Project{},
-		Timestamps: storage.Timestamps{
+		Tags:     []string{},
+		Timestamps: models.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},

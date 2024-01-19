@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/config"
@@ -92,13 +92,13 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerNotFound() {
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusNotFound),
-		Message: api_errors.NotFoundError,
+		Message: apierrors.NotFoundError,
 	}, response)
 }
 
@@ -117,13 +117,13 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerUnauthorized() {
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusUnauthorized),
-		Message: api_errors.UnauthorizedError,
+		Message: apierrors.UnauthorizedError,
 	}, response)
 }
 
