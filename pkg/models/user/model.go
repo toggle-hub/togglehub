@@ -115,16 +115,15 @@ func (um *UserModel) InsertOne(ctx context.Context, record *UserRecord) (primiti
 func (um *UserModel) UpdateOne(
 	ctx context.Context,
 	id primitive.ObjectID,
-	updateValues bson.D,
+	update bson.D,
 ) error {
 	filter := bson.D{{Key: "_id", Value: id}}
-	updateValues = append(updateValues, bson.E{
+	update = append(update, bson.E{
 		Key:   "timestamps.updated_at",
 		Value: primitive.NewDateTimeFromTime(time.Now().UTC()),
 	})
-	update := bson.D{{Key: "$set", Value: updateValues}}
 
-	_, err := um.collection.UpdateOne(ctx, filter, update)
+	_, err := um.collection.UpdateOne(ctx, filter, bson.D{{Key: "$set", Value: update}})
 	if err != nil {
 		return err
 	}
