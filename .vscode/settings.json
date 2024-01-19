@@ -8,6 +8,7 @@
     "healthz",
     "healthzhandler",
     "labstack",
+    "nolint",
     "organizationhandler",
     "organizationmodel",
     "signin",
