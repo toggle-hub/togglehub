@@ -272,7 +272,7 @@ func (suite *OrganizationHandlerTestSuite) TestDeleteProjectHandlerSuccess() {
 		),
 	}, []organizationmodel.Project{
 		*organizationmodel.NewProjectRecord("project 1", ""),
-		*organizationmodel.NewProjectRecord("project 2", "decription"),
+		*organizationmodel.NewProjectRecord("project 2", "description"),
 	}, suite.db)
 
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
@@ -290,17 +290,12 @@ func (suite *OrganizationHandlerTestSuite) TestDeleteProjectHandlerSuccess() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response featureflagmodel.Revision
 	assert.Equal(t, http.StatusNoContent, recorder.Code)
-	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-
 	model := organizationmodel.New(suite.db)
 	savedOrganization, err := model.FindByID(context.Background(), organization.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(savedOrganization.Projects))
-	savedProject := savedOrganization.Projects[0]
-	assert.Equal(t, organization.Projects[1].Name, savedProject.Name)
-	assert.Equal(t, organization.Projects[1].Description, savedProject.Description)
+	assert.Equal(t, []organizationmodel.Project{organization.Projects[1]}, savedOrganization.Projects)
 }
 
 func (suite *OrganizationHandlerTestSuite) TestDeleteProjectUnauthorized() {

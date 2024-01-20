@@ -175,19 +175,6 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 		)
 	}
 
-	for _, project := range organizationRecord.Projects {
-		if project.Name == request.Name {
-			oh.logger.Debug("Client error",
-				zap.String("cause", "Non-unique project name"),
-			)
-			return apierrors.CustomError(
-				c,
-				http.StatusBadRequest,
-				apierrors.BadRequestError,
-			)
-		}
-	}
-
 	project := organizationmodel.NewProjectRecord(request.Name, request.Description)
 
 	err = organizationModel.UpdateOne(
@@ -320,16 +307,13 @@ func (oh *OrganizationHandler) DeleteProject(c echo.Context) error {
 		)
 	}
 
-	projects := organizationRecord.Projects
-	for index, project := range projects {
-		if project.ID == projectID {
-			projects = append(projects[:index], projects[index+1:]...)
-		}
-	}
-
 	err = organizationModel.UpdateOne(context.Background(),
 		bson.D{{Key: "_id", Value: organizationID}},
-		bson.D{{Key: "$set", Value: bson.D{{Key: "projects", Value: projects}}}},
+		bson.D{
+			{Key: "$pull", Value: bson.D{
+				{Key: "projects", Value: bson.M{"_id": projectID}},
+			}},
+		},
 	)
 	if err != nil {
 		oh.logger.Debug("Server error",
@@ -343,7 +327,7 @@ func (oh *OrganizationHandler) DeleteProject(c echo.Context) error {
 
 	oh.logger.Info("Project deleted",
 		zap.String("_id", projectID.Hex()))
-	return c.JSON(http.StatusNoContent, nil)
+	return c.NoContent(http.StatusNoContent)
 }
 
 func NewOrganizationHandler(db *mongo.Database, logger *zap.Logger) *OrganizationHandler {
