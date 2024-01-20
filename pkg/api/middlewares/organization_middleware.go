@@ -3,7 +3,7 @@ package middlewares
 import (
 	"net/http"
 
-	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/logger"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -19,21 +19,21 @@ func OrganizationMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		if organizationHeader == "" {
 			logger.Debug("Missing organization header")
-			return api_errors.CustomError(
+			return apierrors.CustomError(
 				c,
 				http.StatusBadRequest,
-				api_errors.BadRequestError,
+				apierrors.BadRequestError,
 			)
 		}
 
 		organizationID, err := primitive.ObjectIDFromHex(organizationHeader)
 		if err != nil {
 			logger.Debug("Client error",
-				zap.String("cause", err.Error()))
-			return api_errors.CustomError(
+				zap.Error(err))
+			return apierrors.CustomError(
 				c,
 				http.StatusBadRequest,
-				api_errors.BadRequestError,
+				apierrors.BadRequestError,
 			)
 		}
 

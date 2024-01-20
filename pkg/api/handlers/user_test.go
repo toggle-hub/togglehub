@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
-	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers/fixtures"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
@@ -19,7 +19,7 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/logger"
 	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
-	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	testutils "github.com/Roll-Play/togglelabs/pkg/utils/test_utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -85,7 +85,7 @@ func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
 			organizationmodel.Admin,
 		)}, nil, suite.db)
 
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(http.MethodGet, "/user", nil)
@@ -94,13 +94,24 @@ func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
-	response := new(handlers.UserGetResponse)
+	response := new(usermodel.UserWithOrganization)
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), response))
-	assert.Equal(t, handlers.NewUserGetResponse(user, []organizationmodel.OrganizationRecord{
-		*organization,
-	}), response)
+	expected := &usermodel.UserWithOrganization{
+		ID:        user.ID,
+		SsoID:     user.SsoID,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Organizations: []usermodel.UserOrganization{
+			{
+				ID:   organization.ID,
+				Name: organization.Name,
+			},
+		},
+	}
+	assert.Equal(t, expected, response)
 }
 
 func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
@@ -117,7 +128,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 	requestBody, err := json.Marshal(patchInfo)
 	assert.NoError(t, err)
 
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 
 	assert.NoError(t, err)
 
@@ -134,6 +145,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.NotEqual(t, user.UpdatedAt, ur.UpdatedAt)
 	assert.Equal(t, ur.Email, response.Email)
 	assert.Equal(t, ur.FirstName, response.FirstName)
 	assert.Equal(t, ur.LastName, response.LastName)
@@ -148,7 +160,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
 	requestBody, err := json.Marshal(patchInfo)
 	assert.NoError(t, err)
 
-	token, err := api_utils.CreateJWT(primitive.NewObjectID(), time.Second*120)
+	token, err := apiutils.CreateJWT(primitive.NewObjectID(), time.Second*120)
 	assert.NoError(t, err)
 
 	request := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
@@ -157,13 +169,13 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
-	var response api_errors.Error
+	var response apierrors.Error
 
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
-	assert.Equal(t, api_errors.Error{
+	assert.Equal(t, apierrors.Error{
 		Error:   http.StatusText(http.StatusNotFound),
-		Message: api_errors.NotFoundError,
+		Message: apierrors.NotFoundError,
 	}, response)
 }
 
@@ -180,7 +192,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields(
 			"email": "new@email.mail"
 		}`)
 
-	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 	request := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)

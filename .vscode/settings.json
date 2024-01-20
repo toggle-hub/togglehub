@@ -1,11 +1,14 @@
 {
   "cSpell.words": [
-    "bson", 
+    "apierrors",
+    "apiutils",
+    "bson",
     "featureflaghandler",
     "featureflagmodel",
     "healthz",
     "healthzhandler",
     "labstack",
+    "nolint",
     "organizationhandler",
     "organizationmodel",
     "signin",

@@ -42,7 +42,7 @@ type TimelineEntry struct {
 type TimelineRecord struct {
 	ID            primitive.ObjectID `json:"_id" bson:"_id"`
 	FeatureFlagID primitive.ObjectID `json:"feature_flag_id" bson:"feature_flag_id"`
-	Entries       []TimelineEntry
+	Entries       []TimelineEntry    `json:"entries" bson:"entries"`
 }
 
 func NewTimelineEntry(userID primitive.ObjectID, action string) *TimelineEntry {

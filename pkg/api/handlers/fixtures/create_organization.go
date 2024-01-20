@@ -21,7 +21,7 @@ func CreateOrganization(
 	db *mongo.Database,
 ) *organizationmodel.OrganizationRecord {
 	organizationCounter++
-	members := make([]organizationmodel.OrganizationMember, 0)
+	members := make([]organizationmodel.OrganizationMember, 0, len(users))
 	if len(users) < 1 {
 		user := CreateUser("", "", "", "", db)
 		members = append(members, organizationmodel.OrganizationMember{

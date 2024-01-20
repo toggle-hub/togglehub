@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Roll-Play/togglelabs/pkg/storage"
+	"github.com/Roll-Play/togglelabs/pkg/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -49,7 +49,7 @@ type Revision struct {
 	DefaultValue   string             `json:"default_value" bson:"default_value"`
 	LastRevisionID primitive.ObjectID `json:"last_revision_id,omitempty" bson:"last_revision_id,omitempty"`
 	ChangeSet      string             `json:"change_set,omitempty" bson:"change_set,omitempty"`
-	Rules          []Rule
+	Rules          []Rule             `json:"rules,omitempty" bson:"rules,omitempty"`
 }
 
 type FlagType = string
@@ -62,16 +62,17 @@ const (
 )
 
 type FeatureFlagRecord struct {
-	ID             primitive.ObjectID `json:"_id,omitempty" bson:"_id"`
-	OrganizationID primitive.ObjectID `json:"organization_id" bson:"organization_id"`
-	UserID         primitive.ObjectID `json:"user_id" bson:"user_id"`
-	Version        int                `json:"version" bson:"version"`
-	Name           string             `json:"name" bson:"name"`
-	Type           FlagType           `json:"type" bson:"type"`
-	Revisions      []Revision         `json:"revisions" bson:"revisions"`
-	Environments   []FeatureFlagEnvironment
-	Project        string `json:"omitempty" bson:"omitempty"`
-	storage.Timestamps
+	ID             primitive.ObjectID       `json:"_id,omitempty" bson:"_id"`
+	OrganizationID primitive.ObjectID       `json:"organization_id" bson:"organization_id"`
+	UserID         primitive.ObjectID       `json:"user_id" bson:"user_id"`
+	Version        int                      `json:"version" bson:"version"`
+	Name           string                   `json:"name" bson:"name"`
+	Type           FlagType                 `json:"type" bson:"type"`
+	Revisions      []Revision               `json:"revisions" bson:"revisions"`
+	Environments   []FeatureFlagEnvironment `json:"environments,omitempty" bson:"environments,omitempty"`
+	Project        string                   `json:"omitempty" bson:"omitempty"`
+	Tags           []string                 `json:"tags" bson:"tags"`
+	models.Timestamps
 }
 
 type FeatureFlagEnvironment struct {
@@ -86,9 +87,14 @@ func NewFeatureFlagRecord(
 	rules []Rule,
 	organizationID,
 	userID primitive.ObjectID,
-	environmentName,
+	environmentName string,
 	projectName string,
+	tags []string,
 ) *FeatureFlagRecord {
+	if tags == nil {
+		tags = []string{}
+	}
+
 	return &FeatureFlagRecord{
 		OrganizationID: organizationID,
 		UserID:         userID,
@@ -111,8 +117,9 @@ func NewFeatureFlagRecord(
 				IsEnabled: true,
 			},
 		},
+		Tags:    tags,
 		Project: projectName,
-		Timestamps: storage.Timestamps{
+		Timestamps: models.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},
@@ -200,13 +207,8 @@ func (ffm *FeatureFlagModel) FindMany(
 	}
 	defer cursor.Close(ctx)
 
-	for cursor.Next(ctx) {
-		record := new(FeatureFlagRecord)
-		if err := cursor.Decode(record); err != nil {
-			return EmptyFeatureRecordList, err
-		}
-
-		records = append(records, *record)
+	if err := cursor.All(ctx, &records); err != nil {
+		return EmptyFeatureRecordList, err
 	}
 
 	return records, nil
@@ -214,9 +216,18 @@ func (ffm *FeatureFlagModel) FindMany(
 
 func (ffm *FeatureFlagModel) UpdateOne(
 	ctx context.Context,
-	filter,
+	filter interface{},
 	update bson.D,
 ) error {
+	update = append(update, bson.E{
+		Key: "$set",
+		Value: bson.D{
+			{
+				Key:   "timestamps.updated_at",
+				Value: primitive.NewDateTimeFromTime(time.Now().UTC()),
+			},
+		},
+	})
 	_, err := ffm.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
@@ -227,7 +238,7 @@ func (ffm *FeatureFlagModel) UpdateOne(
 
 func (ffm *FeatureFlagModel) FindOne(
 	ctx context.Context,
-	filter bson.D,
+	filter interface{},
 ) (*FeatureFlagRecord, error) {
 	record := new(FeatureFlagRecord)
 

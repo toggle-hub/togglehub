@@ -6,10 +6,9 @@ import (
 	"log"
 	"net/http"
 
-	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
-	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
+	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
-	api_utils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
@@ -42,90 +41,47 @@ type UserPatchResponse struct {
 	LastName  string             `json:"last_name,omitempty" `
 }
 
-type UserOrganization struct {
-	ID   primitive.ObjectID `json:"_id"`
-	Name string             `json:"name"`
-}
-
-type UserGetResponse struct {
-	ID            primitive.ObjectID `json:"_id"`
-	Email         string             `json:"email"`
-	FirstName     string             `json:"first_name,omitempty"`
-	LastName      string             `json:"last_name,omitempty"`
-	Organizations []UserOrganization `json:"organizations"`
-}
-
-func NewUserGetResponse(user *usermodel.UserRecord, organizations []organizationmodel.OrganizationRecord) *UserGetResponse {
-	userOrganizations := make([]UserOrganization, len(organizations))
-
-	for index, organization := range organizations {
-		userOrganizations[index] = UserOrganization{
-			ID:   organization.ID,
-			Name: organization.Name,
-		}
-	}
-
-	return &UserGetResponse{
-		ID:            user.ID,
-		Email:         user.Email,
-		FirstName:     user.FirstName,
-		LastName:      user.LastName,
-		Organizations: userOrganizations,
-	}
-}
-
 func (uh *UserHandler) GetUser(c echo.Context) error {
-	userID, err := api_utils.GetUserFromContext(c)
+	userID, err := apiutils.GetUserFromContext(c)
 	if err != nil {
-		log.Println(api_utils.HandlerErrorLogMessage(err, c))
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		// Should never happen but better safe than sorry
-		if errors.Is(err, api_utils.ErrNotAuthenticated) {
+		if errors.Is(err, apiutils.ErrNotAuthenticated) {
 			uh.logger.Debug("Client error",
-				zap.String("cause", err.Error()),
+				zap.Error(err),
 			)
-			return api_errors.CustomError(
+			return apierrors.CustomError(
 				c,
 				http.StatusUnauthorized,
-				api_errors.UnauthorizedError,
+				apierrors.UnauthorizedError,
 			)
 		}
 
 		uh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
 	model := usermodel.New(uh.db)
-	user, err := model.FindByID(context.Background(), userID)
+	user, err := model.FindUserOrganization(context.Background(), userID)
 	if err != nil {
 		uh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusNotFound,
-			api_errors.NotFoundError,
-		)
-	}
-
-	organizationModel := organizationmodel.New(uh.db)
-	organizations, err := organizationModel.FindByMember(context.Background(), user.ID)
-	if err != nil {
-		uh.logger.Debug("Server error",
-			zap.String("cause", err.Error()))
-		return api_errors.CustomError(c,
-			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.NotFoundError,
 		)
 	}
 
 	return c.JSON(
 		http.StatusOK,
-		NewUserGetResponse(user, organizations),
+		user,
 	)
 }
 
@@ -133,11 +89,11 @@ func (uh *UserHandler) PatchUser(c echo.Context) error {
 	request := new(UserPatchRequest)
 	if err := c.Bind(request); err != nil {
 		uh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusBadRequest,
-			api_errors.BadRequestError,
+			apierrors.BadRequestError,
 		)
 	}
 
@@ -145,36 +101,36 @@ func (uh *UserHandler) PatchUser(c echo.Context) error {
 
 	if err := validate.Struct(request); err != nil {
 		uh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusBadRequest,
-			api_errors.BadRequestError,
+			apierrors.BadRequestError,
 		)
 	}
 
-	userID, err := api_utils.GetUserFromContext(c)
+	userID, err := apiutils.GetUserFromContext(c)
 	if err != nil {
-		log.Println(api_utils.HandlerErrorLogMessage(err, c))
+		log.Println(apiutils.HandlerErrorLogMessage(err, c))
 		// Should never happen but better safe than sorry
-		if errors.Is(err, api_utils.ErrNotAuthenticated) {
+		if errors.Is(err, apiutils.ErrNotAuthenticated) {
 			uh.logger.Debug("Client error",
-				zap.String("cause", err.Error()),
+				zap.Error(err),
 			)
-			return api_errors.CustomError(
+			return apierrors.CustomError(
 				c,
 				http.StatusUnauthorized,
-				api_errors.UnauthorizedError,
+				apierrors.UnauthorizedError,
 			)
 		}
 
 		uh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(
+		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
@@ -182,15 +138,15 @@ func (uh *UserHandler) PatchUser(c echo.Context) error {
 	ur, err := model.FindByID(context.Background(), userID)
 	if err != nil {
 		uh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusNotFound,
-			api_errors.NotFoundError,
+			apierrors.NotFoundError,
 		)
 	}
 
-	objectID, err := model.UpdateOne(
+	err = model.UpdateOne(
 		context.Background(),
 		userID,
 		bson.D{
@@ -201,16 +157,16 @@ func (uh *UserHandler) PatchUser(c echo.Context) error {
 
 	if err != nil {
 		uh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
-		return api_errors.CustomError(c,
+		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
-			api_errors.InternalServerError,
+			apierrors.InternalServerError,
 		)
 	}
 
 	return c.JSON(http.StatusOK, UserPatchResponse{
-		ID:        objectID,
+		ID:        userID,
 		Email:     ur.Email,
 		FirstName: request.FirstName,
 		LastName:  request.LastName,
