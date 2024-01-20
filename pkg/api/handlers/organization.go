@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 
 	api_errors "github.com/Roll-Play/togglelabs/pkg/api/error"
@@ -13,6 +12,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
@@ -164,7 +164,6 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 	}
 
 	request := new(ProjectPostRequest)
-	log.Print("A")
 	if err := c.Bind(request); err != nil {
 		oh.logger.Debug("Client error",
 			zap.String("cause", err.Error()),
@@ -176,10 +175,20 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 		)
 	}
 
-	project := organizationmodel.Project{
-		Name:        request.Name,
-		Description: request.Description,
+	for _, project := range organizationRecord.Projects {
+		if project.Name == request.Name {
+			oh.logger.Debug("Client error",
+				zap.String("cause", "Non-unique project name"),
+			)
+			return api_errors.CustomError(
+				c,
+				http.StatusBadRequest,
+				api_errors.BadRequestError,
+			)
+		}
 	}
+
+	project := organizationmodel.NewProjectRecord(request.Name, request.Description)
 
 	err = organizationModel.UpdateOne(
 		context.Background(),
@@ -200,7 +209,6 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 }
 
 func (oh *OrganizationHandler) GetOrganization(c echo.Context) error {
-	log.Print("A")
 	userID, err := api_utils.GetUserFromContext(c)
 	if err != nil {
 		oh.logger.Debug("Client error",
@@ -250,6 +258,92 @@ func (oh *OrganizationHandler) GetOrganization(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, organizationRecord)
+}
+
+func (oh *OrganizationHandler) DeleteProject(c echo.Context) error {
+	userID, err := api_utils.GetUserFromContext(c)
+	if err != nil {
+		oh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationID, err := api_utils.GetOrganizationFromContext(c)
+	if err != nil {
+		oh.logger.Debug("Client error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusBadRequest,
+			api_errors.BadRequestError,
+		)
+	}
+
+	organizationModel := organizationmodel.New(oh.db)
+	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
+	if err != nil {
+		oh.logger.Debug("Server error",
+			zap.String("cause", err.Error()),
+		)
+		return api_errors.CustomError(c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
+	permission := api_utils.UserHasPermission(userID, organizationRecord, organizationmodel.Collaborator)
+	if !permission {
+		oh.logger.Debug("Server error",
+			zap.String("cause", api_errors.ForbiddenError),
+		)
+		return api_errors.CustomError(
+			c,
+			http.StatusForbidden,
+			api_errors.ForbiddenError,
+		)
+	}
+
+	projectID, err := primitive.ObjectIDFromHex(c.Param("projectID"))
+	if err != nil {
+		oh.logger.Debug("Server error",
+			zap.String("cause", err.Error()))
+		return api_errors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
+	projects := organizationRecord.Projects
+	for index, project := range projects {
+		if project.ID == projectID {
+			projects = append(projects[:index], projects[index+1:]...)
+		}
+	}
+
+	err = organizationModel.UpdateOne(context.Background(),
+		bson.D{{Key: "_id", Value: organizationID}},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "projects", Value: projects}}}},
+	)
+	if err != nil {
+		oh.logger.Debug("Server error",
+			zap.String("cause", err.Error()))
+		return api_errors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			api_errors.InternalServerError,
+		)
+	}
+
+	oh.logger.Info("Project deleted",
+		zap.String("_id", projectID.Hex()))
+	return c.JSON(http.StatusNoContent, nil)
 }
 
 func NewOrganizationHandler(db *mongo.Database, logger *zap.Logger) *OrganizationHandler {

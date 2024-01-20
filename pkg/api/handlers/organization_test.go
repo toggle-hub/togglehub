@@ -51,6 +51,7 @@ func (suite *OrganizationHandlerTestSuite) SetupTest() {
 	testGroup := suite.Server.Group("", middlewares.AuthMiddleware, middlewares.OrganizationMiddleware)
 	testGroup.POST("/projects", h.PostProject)
 	testGroup.GET("/organizations", middlewares.AuthMiddleware(h.GetOrganization))
+	testGroup.DELETE("/projects/:projectID", middlewares.AuthMiddleware(h.DeleteProject))
 }
 
 func (suite *OrganizationHandlerTestSuite) AfterTest(_, _ string) {
@@ -108,7 +109,7 @@ func (suite *OrganizationHandlerTestSuite) TestPostProjectHandlerSuccess() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, []organizationmodel.Project{}, suite.db)
 
 	newProject := handlers.ProjectPostRequest{
 		Name:        "project",
@@ -159,7 +160,7 @@ func (suite *OrganizationHandlerTestSuite) TestPostProjectUnauthorized() {
 			unauthorizedUser,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -195,7 +196,7 @@ func (suite *OrganizationHandlerTestSuite) TestGetOrganizationHandlerSuccess() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -234,7 +235,7 @@ func (suite *OrganizationHandlerTestSuite) TestGetOrganizationHandlerUnauthorize
 			user,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -252,6 +253,89 @@ func (suite *OrganizationHandlerTestSuite) TestGetOrganizationHandlerUnauthorize
 	suite.Server.ServeHTTP(recorder, request)
 
 	var response api_errors.Error
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, http.StatusForbidden, recorder.Code)
+	assert.Equal(t, api_errors.Error{
+		Error:   http.StatusText(http.StatusForbidden),
+		Message: api_errors.ForbiddenError,
+	}, response)
+}
+
+func (suite *OrganizationHandlerTestSuite) TestDeleteProjectHandlerSuccess() {
+	t := suite.T()
+
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
+			user,
+			organizationmodel.Collaborator,
+		),
+	}, []organizationmodel.Project{
+		*organizationmodel.NewProjectRecord("project 1", ""),
+		*organizationmodel.NewProjectRecord("project 2", "decription"),
+	}, suite.db)
+
+	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
+	assert.NoError(t, err)
+
+	request := httptest.NewRequest(
+		http.MethodDelete,
+		"/projects/"+organization.Projects[0].ID.Hex(),
+		nil,
+	)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
+	recorder := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(recorder, request)
+
+	var response featureflagmodel.Revision
+	assert.Equal(t, http.StatusNoContent, recorder.Code)
+	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+
+	model := organizationmodel.New(suite.db)
+	savedOrganization, err := model.FindByID(context.Background(), organization.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(savedOrganization.Projects))
+	savedProject := savedOrganization.Projects[0]
+	assert.Equal(t, organization.Projects[1].Name, savedProject.Name)
+	assert.Equal(t, organization.Projects[1].Description, savedProject.Description)
+}
+
+func (suite *OrganizationHandlerTestSuite) TestDeleteProjectUnauthorized() {
+	t := suite.T()
+
+	user := fixtures.CreateUser("", "", "", "", suite.db)
+	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
+	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
+			user,
+			organizationmodel.Admin,
+		),
+		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
+			unauthorizedUser,
+			organizationmodel.ReadOnly,
+		),
+	}, nil, suite.db)
+
+	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
+	assert.NoError(t, err)
+
+	request := httptest.NewRequest(
+		http.MethodDelete,
+		"/projects/"+organization.Projects[0].ID.Hex(),
+		nil,
+	)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
+	recorder := httptest.NewRecorder()
+
+	suite.Server.ServeHTTP(recorder, request)
+
+	var response api_errors.Error
+
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, http.StatusForbidden, recorder.Code)
 	assert.Equal(t, api_errors.Error{

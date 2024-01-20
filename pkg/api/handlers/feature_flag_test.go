@@ -109,7 +109,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -166,7 +166,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 			user,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -202,7 +202,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
@@ -300,7 +300,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 			user,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
@@ -335,7 +335,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
@@ -380,7 +380,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 	token, err := api_utils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
@@ -424,7 +424,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 	user, err := usermodel.NewUserRecord("evildoear97@gmail.com", "trying_to_steal_info", "Evil", "Doer")
 	assert.NoError(t, err)
 
@@ -465,7 +465,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	willBeOriginalRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
 	willBeLiveRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Draft, primitive.NilObjectID)
@@ -534,7 +534,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
 
@@ -578,7 +578,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorizedMissingP
 			unauthorizedUser,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -614,7 +614,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 			user,
 			organizationmodel.Collaborator,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	wrongRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, revision.ID)
@@ -676,7 +676,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorized() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
 
@@ -720,7 +720,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorizedMissingPermiss
 			user,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -756,7 +756,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
@@ -813,7 +813,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 			user,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, suite.db)
@@ -850,7 +850,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 			user,
 			organizationmodel.Collaborator,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		featureflagmodel.Boolean, nil, []featureflagmodel.FeatureFlagEnvironment{
@@ -914,7 +914,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleUnauthorized() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
 
@@ -958,7 +958,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleMissingPermission
 			user,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := api_utils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
