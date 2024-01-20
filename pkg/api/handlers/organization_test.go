@@ -290,9 +290,7 @@ func (suite *OrganizationHandlerTestSuite) TestDeleteProjectHandlerSuccess() {
 
 	suite.Server.ServeHTTP(recorder, request)
 
-	var response featureflagmodel.Revision
 	assert.Equal(t, http.StatusNoContent, recorder.Code)
-	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 
 	model := organizationmodel.New(suite.db)
 	savedOrganization, err := model.FindByID(context.Background(), organization.ID)
