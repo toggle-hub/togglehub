@@ -17,6 +17,7 @@ var EmptyMemberTupleList = []common.Tuple[*usermodel.UserRecord, organizationmod
 func CreateOrganization(
 	name string,
 	users []common.Tuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum],
+	projects []organizationmodel.Project,
 	db *mongo.Database,
 ) *organizationmodel.OrganizationRecord {
 	organizationCounter++
@@ -40,9 +41,14 @@ func CreateOrganization(
 		name = fmt.Sprintf("the company %d", organizationCounter)
 	}
 
+	if projects == nil {
+		projects = []organizationmodel.Project{*organizationmodel.NewProjectRecord("project", "project description")}
+	}
+
 	model := organizationmodel.New(db)
 
 	record := organizationmodel.NewOrganizationRecord(name, members)
+	record.Projects = projects
 
 	_, err := model.InsertOne(context.Background(), record)
 	if err != nil {

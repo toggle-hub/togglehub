@@ -83,7 +83,7 @@ func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
 		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
 			organizationmodel.Admin,
-		)}, suite.db)
+		)}, nil, suite.db)
 
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)

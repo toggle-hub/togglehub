@@ -85,11 +85,8 @@ func (om *OrganizationModel) UpdateOne(
 	update bson.D,
 ) error {
 	_, err := om.collection.UpdateOne(ctx, filter, update)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 type PermissionLevelEnum = string
@@ -136,8 +133,9 @@ type Environment struct {
 }
 
 type Project struct {
-	Name        string `json:"name" bson:"name"`
-	Description string `json:"description" bson:"description"`
+	ID          primitive.ObjectID `json:"_id" bson:"_id"`
+	Name        string             `json:"name" bson:"name"`
+	Description string             `json:"description" bson:"description"`
 }
 
 func NewOrganizationRecord(name string, members []OrganizationMember) *OrganizationRecord {
@@ -150,5 +148,13 @@ func NewOrganizationRecord(name string, members []OrganizationMember) *Organizat
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 		},
+	}
+}
+
+func NewProjectRecord(name, description string) *Project {
+	return &Project{
+		ID:          primitive.NewObjectID(),
+		Name:        name,
+		Description: description,
 	}
 }

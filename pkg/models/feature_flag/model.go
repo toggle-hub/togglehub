@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/models"
+	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -62,16 +63,16 @@ const (
 )
 
 type FeatureFlagRecord struct {
-	ID             primitive.ObjectID       `json:"_id,omitempty" bson:"_id"`
-	OrganizationID primitive.ObjectID       `json:"organization_id" bson:"organization_id"`
-	UserID         primitive.ObjectID       `json:"user_id" bson:"user_id"`
-	Version        int                      `json:"version" bson:"version"`
-	Name           string                   `json:"name" bson:"name"`
-	Type           FlagType                 `json:"type" bson:"type"`
-	Revisions      []Revision               `json:"revisions" bson:"revisions"`
-	Environments   []FeatureFlagEnvironment `json:"environments,omitempty" bson:"environments,omitempty"`
-	Project        string                   `json:"omitempty" bson:"omitempty"`
-	Tags           []string                 `json:"tags" bson:"tags"`
+	ID             primitive.ObjectID         `json:"_id,omitempty" bson:"_id"`
+	OrganizationID primitive.ObjectID         `json:"organization_id" bson:"organization_id"`
+	UserID         primitive.ObjectID         `json:"user_id" bson:"user_id"`
+	Version        int                        `json:"version" bson:"version"`
+	Name           string                     `json:"name" bson:"name"`
+	Type           FlagType                   `json:"type" bson:"type"`
+	Revisions      []Revision                 `json:"revisions" bson:"revisions"`
+	Environments   []FeatureFlagEnvironment   `json:"environments,omitempty" bson:"environments,omitempty"`
+	Project        *organizationmodel.Project `json:"project,omitempty" bson:"project,omitempty"`
+	Tags           []string                   `json:"tags" bson:"tags"`
 	models.Timestamps
 }
 
@@ -85,10 +86,10 @@ func NewFeatureFlagRecord(
 	defaultValue string,
 	flagType FlagType,
 	rules []Rule,
-	organizationID,
+	organizationID primitive.ObjectID,
 	userID primitive.ObjectID,
 	environmentName string,
-	projectName string,
+	project *organizationmodel.Project,
 	tags []string,
 ) *FeatureFlagRecord {
 	if tags == nil {
@@ -114,11 +115,11 @@ func NewFeatureFlagRecord(
 		Environments: []FeatureFlagEnvironment{
 			{
 				Name:      environmentName,
-				IsEnabled: true,
+				IsEnabled: false,
 			},
 		},
 		Tags:    tags,
-		Project: projectName,
+		Project: project,
 		Timestamps: models.Timestamps{
 			CreatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
 			UpdatedAt: primitive.NewDateTimeFromTime(time.Now().UTC()),
@@ -229,11 +230,13 @@ func (ffm *FeatureFlagModel) UpdateOne(
 		},
 	})
 	_, err := ffm.collection.UpdateOne(ctx, filter, update)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
+}
+
+func (ffm *FeatureFlagModel) UpdateMany(ctx context.Context, filter bson.D, update bson.D) error {
+	_, err := ffm.collection.UpdateMany(ctx, filter, update)
+	return err
 }
 
 func (ffm *FeatureFlagModel) FindOne(

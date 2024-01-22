@@ -111,7 +111,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -138,7 +138,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	assert.Equal(t, featureFlagRequest.Environment, response.Environments[0].Name)
 	assert.NotEmpty(t, response.Tags)
 	assert.Equal(t, []string{"my_tag"}, response.Tags)
-	assert.Equal(t, featureFlagRequest.ProjectName, response.Project)
+	assert.Equal(t, featureFlagRequest.Project, response.Project)
 
 	organizationModel := organizationmodel.New(suite.db)
 	updatedOrganization, err := organizationModel.FindByID(context.Background(), organization.ID)
@@ -176,7 +176,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 			user,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -212,11 +212,11 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
 	newRule := featureflagmodel.Rule{
 		Predicate: "attr: newRule",
@@ -311,7 +311,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 			user,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
@@ -346,14 +346,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	featureFlag1 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, nil, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, nil, nil, suite.db)
 	featureFlag2 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
-		featureflagmodel.Boolean, nil, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, nil, nil, suite.db)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -391,14 +391,14 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
 
 	fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, nil, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, nil, nil, suite.db)
 	featureFlag := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
-		featureflagmodel.Boolean, nil, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, nil, nil, suite.db)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -435,7 +435,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 	user, err := usermodel.NewUserRecord("evildoear97@gmail.com", "trying_to_steal_info", "Evil", "Doer")
 	assert.NoError(t, err)
 
@@ -476,7 +476,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	willBeOriginalRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
 	willBeLiveRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Draft, primitive.NilObjectID)
@@ -487,7 +487,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 			*willBeOriginalRevision,
 			*willBeLiveRevision,
 			*willBeControlRevision,
-		}, nil, nil, suite.db)
+		}, nil, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -545,7 +545,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
 
@@ -589,7 +589,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorizedMissingP
 			unauthorizedUser,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -625,12 +625,12 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 			user,
 			organizationmodel.Collaborator,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	wrongRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, revision.ID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision, *wrongRevision}, nil, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision, *wrongRevision}, nil, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -687,7 +687,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorized() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
 
@@ -731,7 +731,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorizedMissingPermiss
 			user,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -767,11 +767,11 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -824,10 +824,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 			user,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -861,7 +861,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 			user,
 			organizationmodel.Collaborator,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		featureflagmodel.Boolean, nil, []featureflagmodel.FeatureFlagEnvironment{
@@ -873,7 +873,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 				Name:      "dev",
 				IsEnabled: true,
 			},
-		}, nil, suite.db)
+		}, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -925,7 +925,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleUnauthorized() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	unauthorizedUser := fixtures.CreateUser("", "", "", "", suite.db)
 
@@ -969,7 +969,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleMissingPermission
 			user,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	token, err := apiutils.CreateJWT(unauthorizedUser.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -1006,11 +1006,11 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchTagSuccess() {
 			user,
 			organizationmodel.Admin,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -1064,11 +1064,11 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchTagForbidden() {
 			user,
 			organizationmodel.ReadOnly,
 		),
-	}, suite.db)
+	}, nil, suite.db)
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{

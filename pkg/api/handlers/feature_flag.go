@@ -33,13 +33,13 @@ func NewFeatureFlagHandler(db *mongo.Database, logger *zap.Logger) *FeatureFlagH
 }
 
 type PostFeatureFlagRequest struct {
-	Name         string                    `json:"name" validate:"required"`
-	Type         featureflagmodel.FlagType `json:"type" validate:"required,oneof=boolean json string number"`
-	DefaultValue string                    `json:"default_value" validate:"required"`
-	Rules        []featureflagmodel.Rule   `json:"rules" validate:"dive,required"`
-	Tags         []string                  `json:"tags"`
-	Environment  string                    `json:"environment" validate:"required"`
-	ProjectName  string                    `json:"project_name"`
+	Name         string                     `json:"name" validate:"required"`
+	DefaultValue string                     `json:"default_value" validate:"required"`
+	Environment  string                     `json:"environment" validate:"required"`
+	Type         featureflagmodel.FlagType  `json:"type" validate:"required,oneof=boolean json string number"`
+	Tags         []string                   `json:"tags"`
+	Project      *organizationmodel.Project `json:"project"`
+	Rules        []featureflagmodel.Rule    `json:"rules" validate:"dive,required"`
 }
 
 type PatchFeatureFlagRequest struct {
@@ -52,10 +52,10 @@ type PatchFeatureFlagTagsRequest struct {
 }
 
 type ListFeatureFlagResponse struct {
-	Data     []featureflagmodel.FeatureFlagRecord `json:"data"`
 	Page     int                                  `json:"page"`
 	PageSize int                                  `json:"page_size"`
 	Total    int                                  `json:"total"`
+	Data     []featureflagmodel.FeatureFlagRecord `json:"data"`
 }
 
 func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
@@ -211,13 +211,16 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		)
 	}
 
-	err = organizationModel.UpdateOne(
-		context.Background(),
-		bson.D{{Key: "_id", Value: organizationID}},
-		bson.D{{Key: "$addToSet",
-			Value: bson.M{"tags": bson.M{"$each": request.Tags}},
-		}},
-	)
+	if len(request.Tags) > 0 {
+		err = organizationModel.UpdateOne(
+			context.Background(),
+			bson.D{{Key: "_id", Value: organizationID}},
+			bson.D{{Key: "$addToSet",
+				Value: bson.M{"tags": bson.M{"$each": request.Tags}},
+			}},
+		)
+	}
+
 	if err != nil {
 		ffh.logger.Debug("Server error",
 			zap.Error(err),
@@ -237,7 +240,7 @@ func (ffh *FeatureFlagHandler) PostFeatureFlag(c echo.Context) error {
 		organizationID,
 		userID,
 		request.Environment,
-		request.ProjectName,
+		request.Project,
 		request.Tags,
 	)
 
