@@ -124,11 +124,8 @@ func (um *UserModel) UpdateOne(
 	})
 
 	_, err := um.collection.UpdateOne(ctx, filter, bson.D{{Key: "$set", Value: update}})
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 type UserRecord struct {

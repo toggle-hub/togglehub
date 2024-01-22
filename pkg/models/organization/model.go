@@ -85,11 +85,8 @@ func (om *OrganizationModel) UpdateOne(
 	update bson.D,
 ) error {
 	_, err := om.collection.UpdateOne(ctx, filter, update)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 type PermissionLevelEnum = string

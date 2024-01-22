@@ -265,15 +265,18 @@ func (suite *OrganizationHandlerTestSuite) TestDeleteProjectHandlerSuccess() {
 	t := suite.T()
 
 	user := fixtures.CreateUser("", "", "", "", suite.db)
+	project := organizationmodel.NewProjectRecord("project 1", "")
 	organization := fixtures.CreateOrganization("the company", []common.Tuple[*usermodel.UserRecord, string]{
 		common.NewTuple[*usermodel.UserRecord, organizationmodel.PermissionLevelEnum](
 			user,
 			organizationmodel.Collaborator,
 		),
 	}, []organizationmodel.Project{
-		*organizationmodel.NewProjectRecord("project 1", ""),
+		*project,
 		*organizationmodel.NewProjectRecord("project 2", "description"),
 	}, suite.db)
+	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
+		featureflagmodel.Boolean, nil, nil, project, nil, suite.db)
 
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -292,10 +295,15 @@ func (suite *OrganizationHandlerTestSuite) TestDeleteProjectHandlerSuccess() {
 
 	assert.Equal(t, http.StatusNoContent, recorder.Code)
 	model := organizationmodel.New(suite.db)
-	savedOrganization, err := model.FindByID(context.Background(), organization.ID)
+	updatedOrganization, err := model.FindByID(context.Background(), organization.ID)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(savedOrganization.Projects))
-	assert.Equal(t, []organizationmodel.Project{organization.Projects[1]}, savedOrganization.Projects)
+	assert.Equal(t, 1, len(updatedOrganization.Projects))
+	assert.Equal(t, []organizationmodel.Project{organization.Projects[1]}, updatedOrganization.Projects)
+	featureFlagModel := featureflagmodel.New(suite.db)
+	updatedFeatureFlag, err := featureFlagModel.FindByID(context.Background(), featureFlagRecord.ID)
+	assert.NoError(t, err)
+	assert.Nil(t, updatedFeatureFlag.Project)
+
 }
 
 func (suite *OrganizationHandlerTestSuite) TestDeleteProjectUnauthorized() {

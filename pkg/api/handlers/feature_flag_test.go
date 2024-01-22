@@ -138,7 +138,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 	assert.Equal(t, featureFlagRequest.Environment, response.Environments[0].Name)
 	assert.NotEmpty(t, response.Tags)
 	assert.Equal(t, []string{"my_tag"}, response.Tags)
-	assert.Equal(t, featureFlagRequest.ProjectName, response.Project)
+	assert.Equal(t, featureFlagRequest.Project, response.Project)
 
 	organizationModel := organizationmodel.New(suite.db)
 	updatedOrganization, err := organizationModel.FindByID(context.Background(), organization.ID)
@@ -216,7 +216,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
 	newRule := featureflagmodel.Rule{
 		Predicate: "attr: newRule",
@@ -351,9 +351,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 	assert.NoError(t, err)
 
 	featureFlag1 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, nil, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, nil, nil, suite.db)
 	featureFlag2 := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
-		featureflagmodel.Boolean, nil, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, nil, nil, suite.db)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -396,9 +396,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 	assert.NoError(t, err)
 
 	fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, nil, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, nil, nil, suite.db)
 	featureFlag := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature 2", 1,
-		featureflagmodel.Boolean, nil, nil, nil, suite.db)
+		featureflagmodel.Boolean, nil, nil, nil, nil, suite.db)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -487,7 +487,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 			*willBeOriginalRevision,
 			*willBeLiveRevision,
 			*willBeControlRevision,
-		}, nil, nil, suite.db)
+		}, nil, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -630,7 +630,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	wrongRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, revision.ID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision, *wrongRevision}, nil, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision, *wrongRevision}, nil, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -771,7 +771,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -827,7 +827,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 	}, nil, suite.db)
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
 	token, err := apiutils.CreateJWT(user.ID, time.Second*120)
 	assert.NoError(t, err)
@@ -873,7 +873,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 				Name:      "dev",
 				IsEnabled: true,
 			},
-		}, nil, suite.db)
+		}, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -1010,7 +1010,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchTagSuccess() {
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{
@@ -1068,7 +1068,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchTagForbidden() {
 
 	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
-		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, suite.db)
+		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
 	timelineModel := timelinemodel.New(suite.db)
 	timelineRecord := &timelinemodel.TimelineRecord{

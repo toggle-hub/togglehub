@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	featureflagmodel "github.com/Roll-Play/togglelabs/pkg/models/feature_flag"
 	organizationmodel "github.com/Roll-Play/togglelabs/pkg/models/organization"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
@@ -298,6 +299,26 @@ func (oh *OrganizationHandler) DeleteProject(c echo.Context) error {
 
 	projectID, err := primitive.ObjectIDFromHex(c.Param("projectID"))
 	if err != nil {
+		oh.logger.Debug("Server error",
+			zap.String("cause", err.Error()))
+		return apierrors.CustomError(
+			c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	featureFlagModel := featureflagmodel.New(oh.db)
+	err = featureFlagModel.UpdateMany(context.Background(),
+		bson.D{{Key: "project._id", Value: projectID}},
+		bson.D{{
+			Key: "$unset",
+			Value: bson.M{
+				"project": 1,
+			},
+		}},
+	)
+	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 		oh.logger.Debug("Server error",
 			zap.String("cause", err.Error()))
 		return apierrors.CustomError(
