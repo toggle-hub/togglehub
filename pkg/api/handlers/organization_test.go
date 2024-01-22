@@ -303,7 +303,6 @@ func (suite *OrganizationHandlerTestSuite) TestDeleteProjectHandlerSuccess() {
 	updatedFeatureFlag, err := featureFlagModel.FindByID(context.Background(), featureFlagRecord.ID)
 	assert.NoError(t, err)
 	assert.Nil(t, updatedFeatureFlag.Project)
-
 }
 
 func (suite *OrganizationHandlerTestSuite) TestDeleteProjectUnauthorized() {
