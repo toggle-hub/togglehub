@@ -498,7 +498,7 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		}
 		if revision.ID == revisionID && revision.Status == featureflagmodel.Draft {
 			featureFlagRecord.Revisions[index].Status = featureflagmodel.Live
-			featureFlagRecord.Revisions[index].LastRevisionID = lastRevisionID
+			featureFlagRecord.Revisions[index].LastRevisionID = &lastRevisionID
 		}
 	}
 	featureFlagRecord.Version++
@@ -616,16 +616,16 @@ func (ffh *FeatureFlagHandler) RollbackFeatureFlagVersion(c echo.Context) error 
 		)
 	}
 
-	var newRevisionID primitive.ObjectID
+	newRevisionID := new(primitive.ObjectID)
 	for index, revision := range featureFlagRecord.Revisions {
 		if revision.Status == featureflagmodel.Live {
 			featureFlagRecord.Revisions[index].Status = featureflagmodel.Draft
 			newRevisionID = revision.LastRevisionID
-			featureFlagRecord.Revisions[index].LastRevisionID = primitive.NilObjectID
+			featureFlagRecord.Revisions[index].LastRevisionID = nil
 		}
 	}
 	for index, revision := range featureFlagRecord.Revisions {
-		if revision.ID == newRevisionID && revision.Status == featureflagmodel.Archived {
+		if revision.ID == *newRevisionID && revision.Status == featureflagmodel.Archived {
 			featureFlagRecord.Revisions[index].Status = featureflagmodel.Live
 		}
 	}

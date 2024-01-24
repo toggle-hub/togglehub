@@ -42,7 +42,7 @@ func CreateFeatureFlag(
 
 	if revision == nil {
 		revision = []featureflagmodel.Revision{
-			*CreateRevision(userID, featureflagmodel.Draft, primitive.NilObjectID),
+			*CreateRevision(userID, featureflagmodel.Draft, nil),
 		}
 	}
 
@@ -75,7 +75,7 @@ func CreateFeatureFlag(
 func CreateRevision(
 	userID primitive.ObjectID,
 	status featureflagmodel.RevisionStatus,
-	lastRevisionID primitive.ObjectID,
+	lastRevisionID *primitive.ObjectID,
 ) *featureflagmodel.Revision {
 	revisionCounter++
 	return &featureflagmodel.Revision{

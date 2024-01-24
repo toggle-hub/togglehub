@@ -100,7 +100,7 @@ func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), response))
 	expected := &usermodel.UserWithOrganization{
 		ID:        user.ID,
-		SsoID:     user.SsoID,
+		OAuthID:   user.OAuthID,
 		Email:     user.Email,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,

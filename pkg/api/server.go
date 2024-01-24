@@ -59,15 +59,15 @@ func registerRoutes(app *App) {
 		Endpoint:     google.Endpoint,
 	}
 
-	ssoHandler := handlers.NewSsoHandler(
+	oauthHandler := handlers.NewOAuthHandler(
 		app.storage.DB(),
 		oauthConfig,
 		app.logger,
 		&apiutils.HTTPClient{},
 		apiutils.NewOAuthClient(oauthConfig),
 	)
-	app.server.POST("/oauth", ssoHandler.SignIn)
-	app.server.GET("/callback", ssoHandler.Callback)
+	app.server.POST("/oauth", oauthHandler.SignIn)
+	app.server.GET("/callback", oauthHandler.Callback)
 
 	signUpHandler := handlers.NewSignUpHandler(app.storage.DB(), app.logger)
 	app.server.POST("/signup", signUpHandler.PostUser)
