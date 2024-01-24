@@ -490,15 +490,15 @@ func (ffh *FeatureFlagHandler) ApproveRevision(c echo.Context) error {
 		)
 	}
 
-	lastRevisionID := new(primitive.ObjectID)
+	var lastRevisionID primitive.ObjectID
 	for index, revision := range featureFlagRecord.Revisions {
 		if revision.Status == featureflagmodel.Live {
 			featureFlagRecord.Revisions[index].Status = featureflagmodel.Archived
-			lastRevisionID = &revision.ID
+			lastRevisionID = revision.ID
 		}
 		if revision.ID == revisionID && revision.Status == featureflagmodel.Draft {
 			featureFlagRecord.Revisions[index].Status = featureflagmodel.Live
-			featureFlagRecord.Revisions[index].LastRevisionID = lastRevisionID
+			featureFlagRecord.Revisions[index].LastRevisionID = &lastRevisionID
 		}
 	}
 	featureFlagRecord.Version++
