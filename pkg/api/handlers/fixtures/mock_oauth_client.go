@@ -15,8 +15,8 @@ type MockHTTPClient struct{}
 func (c *MockHTTPClient) Get(_ string) (*http.Response, error) {
 	response := httptest.NewRecorder()
 	userInfo := usermodel.UserRecord{
-		SsoID: "12345",
-		Email: "test@test.com",
+		OAuthID: "12345",
+		Email:   "test@test.com",
 	}
 	body, err := json.Marshal(userInfo)
 	if err != nil {

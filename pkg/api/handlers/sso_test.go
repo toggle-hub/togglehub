@@ -24,12 +24,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type SsoTestSuite struct {
+type OAuthTestSuite struct {
 	testutils.DefaultTestSuite
 	db *mongo.Database
 }
 
-func (suite *SsoTestSuite) SetupTest() {
+func (suite *OAuthTestSuite) SetupTest() {
 	testCtx := context.Background()
 	if err := godotenv.Load("../../../.env.test"); err != nil {
 		log.Panic(err)
@@ -44,20 +44,20 @@ func (suite *SsoTestSuite) SetupTest() {
 	suite.Server = echo.New()
 }
 
-func (suite *SsoTestSuite) AfterTest(_, _ string) {
+func (suite *OAuthTestSuite) AfterTest(_, _ string) {
 	if err := suite.db.Drop(context.Background()); err != nil {
 		panic(err)
 	}
 }
 
-func (suite *SsoTestSuite) TearDownSuite() {
+func (suite *OAuthTestSuite) TearDownSuite() {
 	if err := suite.db.Client().Disconnect(context.Background()); err != nil {
 		panic(err)
 	}
 	suite.Server.Close()
 }
 
-func (suite *SsoTestSuite) TestSSoHandlerNewUserSuccess() {
+func (suite *OAuthTestSuite) TestOAtuhHandlerNewUserSuccess() {
 	t := suite.T()
 
 	mockOAuthClient := &fixtures.MockOAuthClient{
@@ -82,7 +82,7 @@ func (suite *SsoTestSuite) TestSSoHandlerNewUserSuccess() {
 
 	logger, _ := logger.NewZapLogger()
 
-	h := handlers.NewSsoHandler(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
+	h := handlers.NewOAuthHandler(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
 	assert.NotNil(t, h)
 	suite.Server.GET("/callback", h.Callback)
 	suite.Server.ServeHTTP(recorder, request)
@@ -96,7 +96,7 @@ func (suite *SsoTestSuite) TestSSoHandlerNewUserSuccess() {
 	assert.NotEmpty(t, response.Token)
 }
 
-func (suite *SsoTestSuite) TestSSoHandlerExistingUserSuccess() {
+func (suite *OAuthTestSuite) TestOAtuhHandlerExistingUserSuccess() {
 	t := suite.T()
 	mockOAuthClient := &fixtures.MockOAuthClient{
 		ExchangeFunc: func(ctc context.Context, code string) (*oauth2.Token, error) {
@@ -120,7 +120,7 @@ func (suite *SsoTestSuite) TestSSoHandlerExistingUserSuccess() {
 
 	logger, _ := logger.NewZapLogger()
 
-	h := handlers.NewSsoHandler(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
+	h := handlers.NewOAuthHandler(suite.db, &oauth2.Config{}, logger, &fixtures.MockHTTPClient{}, mockOAuthClient)
 	suite.Server.GET("/callback", h.Callback)
 	suite.Server.ServeHTTP(recorder, request)
 	var response common.AuthResponse
@@ -131,6 +131,6 @@ func (suite *SsoTestSuite) TestSSoHandlerExistingUserSuccess() {
 	assert.NotEmpty(t, response.Token)
 }
 
-func TestSsoHandler(t *testing.T) {
-	suite.Run(t, new(SsoTestSuite))
+func TestOAuthHandler(t *testing.T) {
+	suite.Run(t, new(OAuthTestSuite))
 }

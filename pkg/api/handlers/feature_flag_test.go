@@ -214,7 +214,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 		),
 	}, nil, suite.db)
 
-	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
+	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, nil)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
 		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
@@ -478,9 +478,9 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 		),
 	}, nil, suite.db)
 
-	willBeOriginalRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
-	willBeLiveRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Draft, primitive.NilObjectID)
-	willBeControlRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Draft, primitive.NilObjectID)
+	willBeOriginalRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, nil)
+	willBeLiveRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Draft, nil)
+	willBeControlRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Draft, nil)
 
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
 		featureflagmodel.Boolean, []featureflagmodel.Revision{
@@ -627,8 +627,8 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 		),
 	}, nil, suite.db)
 
-	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
-	wrongRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, revision.ID)
+	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, nil)
+	wrongRevision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, &revision.ID)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision, *wrongRevision}, nil, nil, nil, suite.db)
 
@@ -769,7 +769,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 		),
 	}, nil, suite.db)
 
-	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
+	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, nil)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
@@ -825,7 +825,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 			organizationmodel.ReadOnly,
 		),
 	}, nil, suite.db)
-	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, primitive.NilObjectID)
+	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Archived, nil)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 2,
 		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
@@ -1008,7 +1008,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchTagSuccess() {
 		),
 	}, nil, suite.db)
 
-	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
+	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, nil)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
 		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 
@@ -1066,7 +1066,7 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchTagForbidden() {
 		),
 	}, nil, suite.db)
 
-	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, primitive.NilObjectID)
+	revision := fixtures.CreateRevision(user.ID, featureflagmodel.Live, nil)
 	featureFlagRecord := fixtures.CreateFeatureFlag(user.ID, organization.ID, "cool feature", 1,
 		featureflagmodel.Boolean, []featureflagmodel.Revision{*revision}, nil, nil, nil, suite.db)
 

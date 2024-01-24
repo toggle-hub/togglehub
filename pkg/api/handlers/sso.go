@@ -19,7 +19,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type SsoHandler struct {
+type OAuthHandler struct {
 	oauthConfig *oauth2.Config
 	db          *mongo.Database
 	logger      *zap.Logger
@@ -27,14 +27,14 @@ type SsoHandler struct {
 	oauthClient apiutils.OAuthClient
 }
 
-func NewSsoHandler(
+func NewOAuthHandler(
 	db *mongo.Database,
 	oauthConfig *oauth2.Config,
 	logger *zap.Logger,
 	httpClient apiutils.BaseHTTPClient,
 	oauthClient apiutils.OAuthClient,
-) *SsoHandler {
-	return &SsoHandler{
+) *OAuthHandler {
+	return &OAuthHandler{
 		oauthConfig: oauthConfig,
 		db:          db,
 		logger:      logger,
@@ -43,7 +43,7 @@ func NewSsoHandler(
 	}
 }
 
-func (sh *SsoHandler) SignIn(c echo.Context) error {
+func (sh *OAuthHandler) SignIn(c echo.Context) error {
 	randomString := os.Getenv("OAUTH_RANDOM_STRING")
 
 	if randomString == "" {
@@ -54,7 +54,7 @@ func (sh *SsoHandler) SignIn(c echo.Context) error {
 	return c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
-func (sh *SsoHandler) Callback(c echo.Context) error {
+func (sh *OAuthHandler) Callback(c echo.Context) error {
 	state := c.QueryParam("state")
 	code := c.QueryParam("code")
 
@@ -141,7 +141,7 @@ func (sh *SsoHandler) Callback(c echo.Context) error {
 	})
 }
 
-func (sh *SsoHandler) getUserOAuthData(
+func (sh *OAuthHandler) getUserOAuthData(
 	state string,
 	code string,
 ) ([]byte, error) {

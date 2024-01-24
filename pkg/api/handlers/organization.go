@@ -120,7 +120,7 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 	userID, err := apiutils.GetUserFromContext(c)
 	if err != nil {
 		oh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
 		return apierrors.CustomError(
 			c,
@@ -132,7 +132,7 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 	organizationID, err := apiutils.GetOrganizationFromContext(c)
 	if err != nil {
 		oh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
 		return apierrors.CustomError(
 			c,
@@ -144,7 +144,7 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		oh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
@@ -167,7 +167,7 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 	request := new(ProjectPostRequest)
 	if err := c.Bind(request); err != nil {
 		oh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
 		return apierrors.CustomError(
 			c,
@@ -185,7 +185,7 @@ func (oh *OrganizationHandler) PostProject(c echo.Context) error {
 	)
 	if err != nil {
 		oh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
@@ -200,7 +200,7 @@ func (oh *OrganizationHandler) GetOrganization(c echo.Context) error {
 	userID, err := apiutils.GetUserFromContext(c)
 	if err != nil {
 		oh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
 		return apierrors.CustomError(
 			c,
@@ -212,7 +212,7 @@ func (oh *OrganizationHandler) GetOrganization(c echo.Context) error {
 	organizationID, err := apiutils.GetOrganizationFromContext(c)
 	if err != nil {
 		oh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
 		return apierrors.CustomError(
 			c,
@@ -225,7 +225,7 @@ func (oh *OrganizationHandler) GetOrganization(c echo.Context) error {
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		oh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
@@ -252,7 +252,7 @@ func (oh *OrganizationHandler) DeleteProject(c echo.Context) error {
 	userID, err := apiutils.GetUserFromContext(c)
 	if err != nil {
 		oh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
 		return apierrors.CustomError(
 			c,
@@ -264,7 +264,7 @@ func (oh *OrganizationHandler) DeleteProject(c echo.Context) error {
 	organizationID, err := apiutils.GetOrganizationFromContext(c)
 	if err != nil {
 		oh.logger.Debug("Client error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
 		return apierrors.CustomError(
 			c,
@@ -277,7 +277,7 @@ func (oh *OrganizationHandler) DeleteProject(c echo.Context) error {
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
 		oh.logger.Debug("Server error",
-			zap.String("cause", err.Error()),
+			zap.Error(err),
 		)
 		return apierrors.CustomError(c,
 			http.StatusInternalServerError,
@@ -300,7 +300,7 @@ func (oh *OrganizationHandler) DeleteProject(c echo.Context) error {
 	projectID, err := primitive.ObjectIDFromHex(c.Param("projectID"))
 	if err != nil {
 		oh.logger.Debug("Server error",
-			zap.String("cause", err.Error()))
+			zap.Error(err))
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -320,7 +320,7 @@ func (oh *OrganizationHandler) DeleteProject(c echo.Context) error {
 	)
 	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 		oh.logger.Debug("Server error",
-			zap.String("cause", err.Error()))
+			zap.Error(err))
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,
@@ -338,7 +338,7 @@ func (oh *OrganizationHandler) DeleteProject(c echo.Context) error {
 	)
 	if err != nil {
 		oh.logger.Debug("Server error",
-			zap.String("cause", err.Error()))
+			zap.Error(err))
 		return apierrors.CustomError(
 			c,
 			http.StatusInternalServerError,

@@ -34,7 +34,7 @@ type UserOrganization struct {
 
 type UserWithOrganization struct {
 	ID            primitive.ObjectID `json:"_id" bson:"_id"`
-	SsoID         string             `json:"sso_id,omitempty" bson:"sso_id,omitempty"`
+	OAuthID       string             `json:"oauth_id,omitempty" bson:"oauth_id,omitempty"`
 	Email         string             `json:"email" bson:"email"`
 	FirstName     string             `json:"first_name,omitempty" bson:"first_name,omitempty"`
 	LastName      string             `json:"last_name,omitempty" bson:"last_name,omitempty"`
@@ -53,7 +53,7 @@ func (um *UserModel) FindUserOrganization(ctx context.Context, id primitive.Obje
 		{{Key: "$project", Value: bson.M{
 			"_id":        1,
 			"email":      1,
-			"sso_id":     1,
+			"oauth_id":   1,
 			"first_name": 1,
 			"last_name":  1,
 			"organizations": bson.M{
@@ -131,7 +131,7 @@ func (um *UserModel) UpdateOne(
 type UserRecord struct {
 	ID        primitive.ObjectID `json:"_id" bson:"_id"`
 	Email     string             `json:"email" bson:"email"`
-	SsoID     string             `json:"sso_id,omitempty" bson:"sso_id,omitempty"`
+	OAuthID   string             `json:"oauth_id,omitempty" bson:"oauth_id,omitempty"`
 	Password  string             `json:"password,omitempty" bson:"password,omitempty"`
 	FirstName string             `json:"first_name,omitempty" bson:"first_name,omitempty"`
 	LastName  string             `json:"last_name,omitempty" bson:"last_name,omitempty"`

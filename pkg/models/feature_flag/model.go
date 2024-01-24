@@ -44,13 +44,13 @@ type Rule struct {
 }
 
 type Revision struct {
-	ID             primitive.ObjectID `json:"_id,omitempty" bson:"_id"`
-	UserID         primitive.ObjectID `json:"user_id" bson:"user_id"`
-	Status         RevisionStatus     `json:"status" bson:"status"`
-	DefaultValue   string             `json:"default_value" bson:"default_value"`
-	LastRevisionID primitive.ObjectID `json:"last_revision_id,omitempty" bson:"last_revision_id,omitempty"`
-	ChangeSet      string             `json:"change_set,omitempty" bson:"change_set,omitempty"`
-	Rules          []Rule             `json:"rules,omitempty" bson:"rules,omitempty"`
+	ID             primitive.ObjectID  `json:"_id,omitempty" bson:"_id"`
+	UserID         primitive.ObjectID  `json:"user_id" bson:"user_id"`
+	Status         RevisionStatus      `json:"status" bson:"status"`
+	DefaultValue   string              `json:"default_value" bson:"default_value"`
+	LastRevisionID *primitive.ObjectID `json:"last_revision_id,omitempty" bson:"last_revision_id,omitempty"`
+	ChangeSet      string              `json:"change_set,omitempty" bson:"change_set,omitempty"`
+	Rules          []Rule              `json:"rules,omitempty" bson:"rules,omitempty"`
 }
 
 type FlagType = string
@@ -109,7 +109,7 @@ func NewFeatureFlagRecord(
 				Status:         Live,
 				DefaultValue:   defaultValue,
 				Rules:          NewRuleRecordList(rules),
-				LastRevisionID: primitive.NilObjectID,
+				LastRevisionID: nil,
 			},
 		},
 		Environments: []FeatureFlagEnvironment{
