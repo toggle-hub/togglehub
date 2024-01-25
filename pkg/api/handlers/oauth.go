@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
@@ -98,12 +99,18 @@ func (sh *OAuthHandler) Callback(c echo.Context) error {
 			)
 		}
 
+		cookie := new(http.Cookie)
+		cookie.Name = "Authorization"
+		cookie.Value = "Bearer " + token
+		cookie.Expires = time.Now().Add(config.JWTExpireTime * time.Millisecond)
+		cookie.HttpOnly = true
+		c.SetCookie(cookie)
+
 		return c.JSON(http.StatusOK, common.AuthResponse{
 			ID:        foundRecord.ID,
 			Email:     foundRecord.Email,
 			FirstName: foundRecord.FirstName,
 			LastName:  foundRecord.LastName,
-			Token:     token,
 		})
 	}
 
@@ -131,13 +138,19 @@ func (sh *OAuthHandler) Callback(c echo.Context) error {
 		)
 	}
 
+	cookie := new(http.Cookie)
+	cookie.Name = "Authorization"
+	cookie.Value = "Bearer " + token
+	cookie.Expires = time.Now().Add(config.JWTExpireTime * time.Millisecond)
+	cookie.HttpOnly = true
+	c.SetCookie(cookie)
+
 	sh.logger.Debug("User created",
 		zap.String("_id", objectID.Hex()),
 	)
 	return c.JSON(http.StatusCreated, common.AuthResponse{
 		ID:    userData.ID,
 		Email: userData.Email,
-		Token: token,
 	})
 }
 

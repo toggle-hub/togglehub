@@ -83,7 +83,10 @@ func (suite *OrganizationHandlerTestSuite) TestPostOrganizationHandlerSuccess() 
 
 	request := httptest.NewRequest(http.MethodPost, "/organizations", bytes.NewBuffer(requestBody))
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
@@ -127,7 +130,10 @@ func (suite *OrganizationHandlerTestSuite) TestPostProjectHandlerSuccess() {
 		bytes.NewBuffer(requestBody),
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -171,7 +177,10 @@ func (suite *OrganizationHandlerTestSuite) TestPostProjectUnauthorized() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -207,7 +216,10 @@ func (suite *OrganizationHandlerTestSuite) TestGetOrganizationHandlerSuccess() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -246,7 +258,10 @@ func (suite *OrganizationHandlerTestSuite) TestGetOrganizationHandlerUnauthorize
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -287,7 +302,10 @@ func (suite *OrganizationHandlerTestSuite) TestDeleteProjectHandlerSuccess() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -330,7 +348,10 @@ func (suite *OrganizationHandlerTestSuite) TestDeleteProjectUnauthorized() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
