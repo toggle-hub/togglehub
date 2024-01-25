@@ -95,6 +95,7 @@ func (suite *OAuthTestSuite) TestOAuthHandlerNewUserSuccess() {
 	assert.Equal(t, ur.Email, response.Email)
 	assert.NotEmpty(t, response)
 
+	defer recorder.Result().Body.Close()
 	cookie := recorder.Result().Cookies()[0]
 	assert.NotNil(t, cookie)
 	assert.NotEmpty(t, cookie.Value)
@@ -134,6 +135,7 @@ func (suite *OAuthTestSuite) TestOAuthHandlerExistingUserSuccess() {
 	assert.Equal(t, user.Email, response.Email)
 	assert.NotEmpty(t, response)
 
+	defer recorder.Result().Body.Close()
 	cookie := recorder.Result().Cookies()[0]
 	assert.NotNil(t, cookie)
 	assert.NotEmpty(t, cookie.Value)
