@@ -83,10 +83,12 @@ func (suite *SignUpHandlerTestSuite) TestSignUpHandlerSuccess() {
 	assert.Equal(t, ur.LastName, response.LastName)
 	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(ur.Password), []byte("123123123")))
 
-	defer recorder.Result().Body.Close()
-	cookie := recorder.Result().Cookies()[0]
+	recorderResponse := recorder.Result()
+	cookie := recorderResponse.Cookies()[0]
 	assert.NotNil(t, cookie)
 	assert.NotEmpty(t, cookie.Value)
+
+	recorderResponse.Body.Close()
 }
 
 func (suite *SignUpHandlerTestSuite) TestSignUpHandlerUnsuccessful() {

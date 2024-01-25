@@ -78,10 +78,12 @@ func (suite *SignInHandlerTestSuite) TestSignInHandlerSuccess() {
 	assert.Equal(t, user.FirstName, response.FirstName)
 	assert.Equal(t, user.LastName, response.LastName)
 
-	defer recorder.Result().Body.Close()
-	cookie := recorder.Result().Cookies()[0]
+	recorderResponse := recorder.Result()
+	cookie := recorderResponse.Cookies()[0]
 	assert.NotNil(t, cookie)
 	assert.NotEmpty(t, cookie.Value)
+
+	recorderResponse.Body.Close()
 }
 
 func (suite *SignInHandlerTestSuite) TestSignInHandlerNotFound() {
