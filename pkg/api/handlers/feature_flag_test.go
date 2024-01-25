@@ -122,7 +122,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagSuccess() {
 		bytes.NewBuffer(requestBody),
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -187,7 +190,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPostFeatureFlagUnauthorized() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -251,7 +257,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagSuccess() {
 		bytes.NewBuffer(requestBody),
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -321,7 +330,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchFeatureFlagUnauthorized() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -361,7 +373,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsAuthorized() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -406,7 +421,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsPagination() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -452,7 +470,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestListFeatureFlagsUnauthorized() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -507,7 +528,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionStatusUpdateSuccess() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -559,7 +583,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorized() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -601,7 +628,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRevisionUpdateUnauthorizedMissingP
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -650,7 +680,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackSuccess() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -701,7 +734,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorized() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -743,7 +779,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestRollbackUnauthorizedMissingPermiss
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -790,7 +829,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionSuccess() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -838,7 +880,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestFeatureFlagDeletionForbidden() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -893,7 +938,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleSuccess() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -939,7 +987,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleUnauthorized() {
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -981,7 +1032,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestEnvironmentToggleMissingPermission
 		nil,
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -1034,7 +1088,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchTagSuccess() {
 		bytes.NewBuffer(requestBody),
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
@@ -1092,7 +1149,10 @@ func (suite *FeatureFlagHandlerTestSuite) TestPatchTagForbidden() {
 		bytes.NewBuffer(requestBody),
 	)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
+	request.AddCookie(&http.Cookie{
+		Name:  "Authorization",
+		Value: fmt.Sprintf("Bearer %s", token),
+	})
 	request.Header.Set(middlewares.XOrganizationHeader, organization.ID.Hex())
 	recorder := httptest.NewRecorder()
 
