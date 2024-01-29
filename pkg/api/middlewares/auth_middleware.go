@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
@@ -16,45 +15,34 @@ import (
 	"go.uber.org/zap"
 )
 
-var ErrMissingAuthCookie = errors.New("missing authorization cookie")
+var ErrMissingAuthHeader = errors.New("missing authorization header")
 var ErrInvalidSignMethod = errors.New("invalid signing method")
 var ErrInvalidToken = errors.New("invalid token")
 
 func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		logger, _ := logger.GetInstance()
-		authCookie, err := c.Cookie("Authorization")
-		if err != nil {
+		authHeader := c.Request().Header.Get(echo.HeaderAuthorization)
+
+		if authHeader == "" {
 			logger.Debug("Client error",
-				zap.Error(ErrMissingAuthCookie))
+				zap.Error(errors.New("missing Authorization header")))
 			return c.JSON(http.StatusUnauthorized, apierrors.Error{
-				Error:   "missing Authorization cookie",
+				Error:   "missing Authorization header",
 				Message: http.StatusText(http.StatusUnauthorized),
 			})
 		}
 
-		if authCookie.Name == "" {
-			logger.Debug("Client error",
-				zap.Error(ErrMissingAuthCookie))
-			return c.JSON(http.StatusUnauthorized, apierrors.Error{
-				Error:   "missing Authorization cookie",
-				Message: http.StatusText(http.StatusUnauthorized),
-			})
-		}
-
-		tokenString := strings.TrimSpace(strings.Replace(authCookie.Value, "Bearer ", "", 1))
+		tokenString := strings.TrimSpace(strings.Replace(authHeader, "Bearer ", "", 1))
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			secretKey := os.Getenv("JWT_KEY")
-			if secretKey == "" {
-				secretKey = "your-secret-key"
-			}
+			secretKey := []byte("your-secret-key")
 
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				logger.Debug("Client error",
 					zap.Error(ErrInvalidSignMethod))
 				return nil, ErrInvalidSignMethod
 			}
-			return []byte(secretKey), nil
+			return secretKey, nil
 		})
 
 		if err != nil {

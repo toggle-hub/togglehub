@@ -57,7 +57,7 @@ func (suite *OAuthTestSuite) TearDownSuite() {
 	suite.Server.Close()
 }
 
-func (suite *OAuthTestSuite) TestOAuthHandlerNewUserSuccess() {
+func (suite *OAuthTestSuite) TestOAtuhHandlerNewUserSuccess() {
 	t := suite.T()
 
 	mockOAuthClient := &fixtures.MockOAuthClient{
@@ -87,23 +87,16 @@ func (suite *OAuthTestSuite) TestOAuthHandlerNewUserSuccess() {
 	suite.Server.GET("/callback", h.Callback)
 	suite.Server.ServeHTTP(recorder, request)
 	var response common.AuthResponse
-	ur, err := model.FindByEmail(context.Background(), "test@test.com")
 
+	ur, err := model.FindByEmail(context.Background(), "test@test.com")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, ur.Email, response.Email)
-	assert.NotEmpty(t, response)
-
-	recorderResponse := recorder.Result()
-	cookie := recorderResponse.Cookies()[0]
-	assert.NotNil(t, cookie)
-	assert.NotEmpty(t, cookie.Value)
-
-	recorderResponse.Body.Close()
+	assert.NotEmpty(t, response.Token)
 }
 
-func (suite *OAuthTestSuite) TestOAuthHandlerExistingUserSuccess() {
+func (suite *OAuthTestSuite) TestOAtuhHandlerExistingUserSuccess() {
 	t := suite.T()
 	mockOAuthClient := &fixtures.MockOAuthClient{
 		ExchangeFunc: func(ctc context.Context, code string) (*oauth2.Token, error) {
@@ -135,14 +128,7 @@ func (suite *OAuthTestSuite) TestOAuthHandlerExistingUserSuccess() {
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
 	assert.Equal(t, user.Email, response.Email)
-	assert.NotEmpty(t, response)
-
-	recorderResponse := recorder.Result()
-	cookie := recorderResponse.Cookies()[0]
-	assert.NotNil(t, cookie)
-	assert.NotEmpty(t, cookie.Value)
-
-	recorderResponse.Body.Close()
+	assert.NotEmpty(t, response.Token)
 }
 
 func TestOAuthHandler(t *testing.T) {
