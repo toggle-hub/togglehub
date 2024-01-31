@@ -20,6 +20,7 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -27,6 +28,7 @@ require (
 )
 
 require (
+	github.com/aws/aws-sdk-go v1.50.5
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect

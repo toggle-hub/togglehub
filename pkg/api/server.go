@@ -11,6 +11,9 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
 type App struct {
@@ -66,10 +69,23 @@ func registerRoutes(app *App) {
 		&apiutils.HTTPClient{},
 		apiutils.NewOAuthClient(oauthConfig),
 	)
+
 	app.server.POST("/oauth", oauthHandler.SignIn)
 	app.server.GET("/callback", oauthHandler.Callback)
 
-	signUpHandler := handlers.NewSignUpHandler(app.storage.DB(), app.logger)
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	svc := sqs.New(sess)
+	queueName := os.Getenv("SQS_QUEUE_NAME")
+	result, err := svc.GetQueueUrl(&sqs.GetQueueUrlInput{
+		QueueName: &queueName,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	signUpHandler := handlers.NewSignUpHandler(app.storage.DB(), app.logger, sess, result.QueueUrl)
 	app.server.POST("/signup", signUpHandler.PostUser)
 
 	signInHandler := handlers.NewSignInHandler(app.storage.DB(), app.logger)

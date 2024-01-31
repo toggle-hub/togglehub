@@ -11,6 +11,9 @@ import (
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,14 +21,18 @@ import (
 )
 
 type SignUpHandler struct {
-	db     *mongo.Database
-	logger *zap.Logger
+	db       *mongo.Database
+	logger   *zap.Logger
+	sess     *session.Session
+	queueUrl *string
 }
 
-func NewSignUpHandler(db *mongo.Database, logger *zap.Logger) *SignUpHandler {
+func NewSignUpHandler(db *mongo.Database, logger *zap.Logger, sess *session.Session, queueUrl *string) *SignUpHandler {
 	return &SignUpHandler{
-		db:     db,
-		logger: logger,
+		db:       db,
+		logger:   logger,
+		sess:     sess,
+		queueUrl: queueUrl,
 	}
 }
 
@@ -109,6 +116,27 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	cookie.Expires = time.Now().Add(config.JWTExpireTime * time.Millisecond)
 	cookie.HttpOnly = true
 	c.SetCookie(cookie)
+
+	svc := sqs.New(sh.sess)
+
+	_, err = svc.SendMessage(&sqs.SendMessageInput{
+		DelaySeconds: aws.Int64(10),
+		MessageAttributes: map[string]*sqs.MessageAttributeValue{
+			"Title": &sqs.MessageAttributeValue{
+				DataType:    aws.String("String"),
+				StringValue: aws.String("Email validation"),
+			},
+			"UserId": &sqs.MessageAttributeValue{
+				DataType:    aws.String("String"),
+				StringValue: aws.String(ur.ID.String()),
+			},
+		},
+		MessageBody: aws.String("Email validation information that I'm not really sure how to generate"),
+		QueueUrl:    sh.queueUrl,
+	})
+	if err != nil {
+		return err
+	}
 
 	sh.logger.Debug("Created user",
 		zap.String("_id", objectID.Hex()),
