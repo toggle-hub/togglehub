@@ -121,7 +121,6 @@ func (ffh *FeatureFlagHandler) ListFeatureFlags(c echo.Context) error {
 	}})
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-
 			return c.JSON(http.StatusOK, ListFeatureFlagResponse{
 				Data:     featureflagmodel.EmptyFeatureRecordList,
 				Page:     page,
