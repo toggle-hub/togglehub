@@ -2,21 +2,18 @@ package sqs_helper
 
 import (
 	"os"
-	"sync"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
-
-var sqsHelper *SqsHelper
-var lock = &sync.Mutex{}
 
 type SqsHelper struct {
 	SqsClient *sqs.SQS
 	QueueUrl  *string
 }
 
-func newSqsHelper() (*SqsHelper, error) {
+func NewSqsHelper() (*SqsHelper, error) {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
@@ -36,18 +33,16 @@ func newSqsHelper() (*SqsHelper, error) {
 
 }
 
-func GetInstance() (*SqsHelper, error) {
-	if sqsHelper != nil {
-		return sqsHelper, nil
-	}
-
-	lock.Lock()
-	defer lock.Unlock()
-	newSqsHelper, err := newSqsHelper()
-	if err != nil {
-		return nil, err
-	}
-
-	sqsHelper = newSqsHelper
-	return sqsHelper, nil
+func (sh SqsHelper) SendMessage(
+	delay int64,
+	messageAttributes map[string]*sqs.MessageAttributeValue,
+	messageBody string,
+) error {
+	_, err := sh.SqsClient.SendMessage(&sqs.SendMessageInput{
+		DelaySeconds:      aws.Int64(delay),
+		MessageAttributes: messageAttributes,
+		MessageBody:       aws.String(messageBody),
+		QueueUrl:          sh.QueueUrl,
+	})
+	return err
 }

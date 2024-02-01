@@ -5,7 +5,6 @@ import (
 
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
-	"github.com/Roll-Play/togglelabs/pkg/api/sqs_helper"
 	"github.com/Roll-Play/togglelabs/pkg/storage"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
@@ -15,11 +14,10 @@ import (
 )
 
 type App struct {
-	port      string
-	server    *echo.Echo
-	storage   *storage.MongoStorage
-	logger    *zap.Logger
-	sqsHelper *sqs_helper.SqsHelper
+	port    string
+	server  *echo.Echo
+	storage *storage.MongoStorage
+	logger  *zap.Logger
 }
 
 func (a *App) Listen() error {
@@ -34,15 +32,14 @@ func normalizePort(port string) string {
 	return port
 }
 
-func NewApp(port string, storage *storage.MongoStorage, logger *zap.Logger, sqsHelper *sqs_helper.SqsHelper) *App {
+func NewApp(port string, storage *storage.MongoStorage, logger *zap.Logger) *App {
 	server := echo.New()
 
 	app := &App{
-		server:    server,
-		port:      normalizePort(port),
-		storage:   storage,
-		logger:    logger,
-		sqsHelper: sqsHelper,
+		server:  server,
+		port:    normalizePort(port),
+		storage: storage,
+		logger:  logger,
 	}
 	app.server.Use(middlewares.ZapLogger(logger))
 
@@ -73,7 +70,7 @@ func registerRoutes(app *App) {
 	app.server.POST("/oauth", oauthHandler.SignIn)
 	app.server.GET("/callback", oauthHandler.Callback)
 
-	signUpHandler := handlers.NewSignUpHandler(app.storage.DB(), app.logger, app.sqsHelper)
+	signUpHandler := handlers.NewSignUpHandler(app.storage.DB(), app.logger)
 	app.server.POST("/signup", signUpHandler.PostUser)
 
 	signInHandler := handlers.NewSignInHandler(app.storage.DB(), app.logger)

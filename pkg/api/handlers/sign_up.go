@@ -21,16 +21,14 @@ import (
 )
 
 type SignUpHandler struct {
-	db        *mongo.Database
-	logger    *zap.Logger
-	sqsHelper *sqs_helper.SqsHelper
+	db     *mongo.Database
+	logger *zap.Logger
 }
 
-func NewSignUpHandler(db *mongo.Database, logger *zap.Logger, sqsHelper *sqs_helper.SqsHelper) *SignUpHandler {
+func NewSignUpHandler(db *mongo.Database, logger *zap.Logger) *SignUpHandler {
 	return &SignUpHandler{
-		db:        db,
-		logger:    logger,
-		sqsHelper: sqsHelper,
+		db:     db,
+		logger: logger,
 	}
 }
 
@@ -115,21 +113,18 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	cookie.HttpOnly = true
 	c.SetCookie(cookie)
 
-	_, err = sh.sqsHelper.SqsClient.SendMessage(&sqs.SendMessageInput{
-		DelaySeconds: aws.Int64(10),
-		MessageAttributes: map[string]*sqs.MessageAttributeValue{
-			"Title": &sqs.MessageAttributeValue{
-				DataType:    aws.String("String"),
-				StringValue: aws.String("Email validation"),
-			},
-			"UserId": &sqs.MessageAttributeValue{
-				DataType:    aws.String("String"),
-				StringValue: aws.String(ur.ID.String()),
-			},
+	sqsHelper, err := sqs_helper.NewSqsHelper()
+	messageAttributes := map[string]*sqs.MessageAttributeValue{
+		"Title": &sqs.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String("Email validation"),
 		},
-		MessageBody: aws.String("Email validation information that I'm not really sure how to generate"),
-		QueueUrl:    sh.sqsHelper.QueueUrl,
-	})
+		"UserId": &sqs.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String(ur.ID.String()),
+		},
+	}
+	sqsHelper.SendMessage(10, messageAttributes, "Email validation information that I'm not really sure how to generate")
 	if err != nil {
 		return err
 	}
