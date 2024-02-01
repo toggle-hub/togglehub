@@ -113,7 +113,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	cookie.HttpOnly = true
 	c.SetCookie(cookie)
 
-	sqsHelper, err := sqs_helper.NewSqsHelper()
+	sqsHelper, err := sqs_helper.NewSqs()
 	messageAttributes := map[string]*sqs.MessageAttributeValue{
 		"Title": &sqs.MessageAttributeValue{
 			DataType:    aws.String("String"),
@@ -124,7 +124,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 			StringValue: aws.String(ur.ID.String()),
 		},
 	}
-	sqsHelper.SendMessage(10, messageAttributes, "Email validation information that I'm not really sure how to generate")
+	sqsHelper.SendMessage(0, messageAttributes, "Email validation information that I'm not really sure how to generate")
 	if err != nil {
 		return err
 	}

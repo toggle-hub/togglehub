@@ -8,12 +8,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
-type SqsHelper struct {
-	SqsClient *sqs.SQS
-	QueueUrl  *string
+type Sqs struct {
+	sqsClient *sqs.SQS
+	queueUrl  *string
 }
 
-func NewSqsHelper() (*SqsHelper, error) {
+func NewSqs() (*Sqs, error) {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
@@ -26,23 +26,23 @@ func NewSqsHelper() (*SqsHelper, error) {
 		return nil, err
 	}
 
-	return &SqsHelper{
-		SqsClient: svc,
-		QueueUrl:  result.QueueUrl,
+	return &Sqs{
+		sqsClient: svc,
+		queueUrl:  result.QueueUrl,
 	}, nil
 
 }
 
-func (sh SqsHelper) SendMessage(
+func (sh Sqs) SendMessage(
 	delay int64,
 	messageAttributes map[string]*sqs.MessageAttributeValue,
 	messageBody string,
 ) error {
-	_, err := sh.SqsClient.SendMessage(&sqs.SendMessageInput{
+	_, err := sh.sqsClient.SendMessage(&sqs.SendMessageInput{
 		DelaySeconds:      aws.Int64(delay),
 		MessageAttributes: messageAttributes,
 		MessageBody:       aws.String(messageBody),
-		QueueUrl:          sh.QueueUrl,
+		QueueUrl:          sh.queueUrl,
 	})
 	return err
 }
