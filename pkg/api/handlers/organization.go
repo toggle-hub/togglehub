@@ -224,6 +224,15 @@ func (oh *OrganizationHandler) GetOrganization(c echo.Context) error {
 	organizationModel := organizationmodel.New(oh.db)
 	organizationRecord, err := organizationModel.FindByID(context.Background(), organizationID)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			oh.logger.Debug("Client error",
+				zap.Error(err),
+			)
+			return apierrors.CustomError(c,
+				http.StatusNotFound,
+				apierrors.NotFoundError,
+			)
+		}
 		oh.logger.Debug("Server error",
 			zap.Error(err),
 		)

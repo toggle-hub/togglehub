@@ -23,9 +23,8 @@ type Error struct {
 }
 
 func CustomError(c echo.Context, httpStatus int, message ErrorMessage) error {
-	newError := Error{
+	return c.JSON(httpStatus, Error{
 		Error:   http.StatusText(httpStatus),
 		Message: message,
-	}
-	return c.JSON(httpStatus, newError)
+	})
 }
