@@ -126,7 +126,13 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	}
 	sqsHelper.SendMessage(0, messageAttributes, "Email validation information that I'm not really sure how to generate")
 	if err != nil {
-		return err
+		sh.logger.Debug("Server error",
+			zap.Error(err),
+		)
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
 	}
 
 	sh.logger.Debug("Created user",
