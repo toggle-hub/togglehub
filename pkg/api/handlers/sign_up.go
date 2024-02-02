@@ -137,5 +137,6 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 		Email:     ur.Email,
 		FirstName: ur.FirstName,
 		LastName:  ur.LastName,
+		Token:     token,
 	})
 }

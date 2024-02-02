@@ -90,10 +90,7 @@ func (suite *UserHandlerTestSuite) TestUserGetHandlerSuccess() {
 
 	request := httptest.NewRequest(http.MethodGet, "/user", nil)
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.AddCookie(&http.Cookie{
-		Name:  "Authorization",
-		Value: fmt.Sprintf("Bearer %s", token),
-	})
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
@@ -137,10 +134,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerSuccess() {
 
 	request := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.AddCookie(&http.Cookie{
-		Name:  "Authorization",
-		Value: fmt.Sprintf("Bearer %s", token),
-	})
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
@@ -171,10 +165,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerNotFound() {
 
 	request := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.AddCookie(&http.Cookie{
-		Name:  "Authorization",
-		Value: fmt.Sprintf("Bearer %s", token),
-	})
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
 	recorder := httptest.NewRecorder()
 
 	suite.Server.ServeHTTP(recorder, request)
@@ -205,10 +196,7 @@ func (suite *UserHandlerTestSuite) TestUserPatchHandlerOnlyChangesAllowedFields(
 	assert.NoError(t, err)
 	request := httptest.NewRequest(http.MethodPatch, "/user", bytes.NewBuffer(requestBody))
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	request.AddCookie(&http.Cookie{
-		Name:  "Authorization",
-		Value: fmt.Sprintf("Bearer %s", token),
-	})
+	request.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer %s", token))
 
 	recorder := httptest.NewRecorder()
 
