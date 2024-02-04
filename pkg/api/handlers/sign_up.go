@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
@@ -107,13 +106,6 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 			apierrors.InternalServerError,
 		)
 	}
-
-	cookie := new(http.Cookie)
-	cookie.Name = "Authorization"
-	cookie.Value = "Bearer " + token
-	cookie.Expires = time.Now().Add(config.JWTExpireTime * time.Millisecond)
-	cookie.HttpOnly = true
-	c.SetCookie(cookie)
 
 	err = sh.sqs.CreateSession()
 	if err != nil {
