@@ -22,7 +22,7 @@ type Sqs struct {
 	queueUrl  *string
 }
 
-func (s Sqs) CreateSession() error {
+func (s *Sqs) CreateSession() error {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
@@ -39,10 +39,9 @@ func (s Sqs) CreateSession() error {
 	s.queueUrl = result.QueueUrl
 
 	return nil
-
 }
 
-func (s Sqs) SendMessage(
+func (s *Sqs) SendMessage(
 	delay int64,
 	messageAttributes map[string]*sqs.MessageAttributeValue,
 	messageBody string,

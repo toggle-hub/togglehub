@@ -136,7 +136,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 			StringValue: aws.String(ur.ID.String()),
 		},
 	}
-	sh.sqs.SendMessage(0, messageAttributes, "Email validation information that I'm not really sure how to generate")
+	err = sh.sqs.SendMessage(0, messageAttributes, "Email validation information that I'm not really sure how to generate")
 	if err != nil {
 		sh.logger.Debug("Server error",
 			zap.Error(err),
