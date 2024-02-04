@@ -23,12 +23,14 @@ import (
 type SignUpHandler struct {
 	db     *mongo.Database
 	logger *zap.Logger
+	sqs    sqs_helper.BaseSqs
 }
 
-func NewSignUpHandler(db *mongo.Database, logger *zap.Logger) *SignUpHandler {
+func NewSignUpHandler(db *mongo.Database, logger *zap.Logger, sqs sqs_helper.BaseSqs) *SignUpHandler {
 	return &SignUpHandler{
 		db:     db,
 		logger: logger,
+		sqs:    sqs,
 	}
 }
 
@@ -113,7 +115,17 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 	cookie.HttpOnly = true
 	c.SetCookie(cookie)
 
-	sqsHelper, err := sqs_helper.NewSqs()
+	err = sh.sqs.CreateSession()
+	if err != nil {
+		sh.logger.Debug("Server error",
+			zap.Error(err),
+		)
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
 	messageAttributes := map[string]*sqs.MessageAttributeValue{
 		"Title": &sqs.MessageAttributeValue{
 			DataType:    aws.String("String"),
@@ -124,7 +136,7 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 			StringValue: aws.String(ur.ID.String()),
 		},
 	}
-	sqsHelper.SendMessage(0, messageAttributes, "Email validation information that I'm not really sure how to generate")
+	sh.sqs.SendMessage(0, messageAttributes, "Email validation information that I'm not really sure how to generate")
 	if err != nil {
 		sh.logger.Debug("Server error",
 			zap.Error(err),

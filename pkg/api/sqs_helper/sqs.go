@@ -8,12 +8,21 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
+type BaseSqs interface {
+	CreateSession() error
+	SendMessage(
+		delay int64,
+		messageAttributes map[string]*sqs.MessageAttributeValue,
+		messageBody string,
+	) error
+}
+
 type Sqs struct {
 	sqsClient *sqs.SQS
 	queueUrl  *string
 }
 
-func NewSqs() (*Sqs, error) {
+func (s Sqs) CreateSession() error {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
@@ -23,26 +32,26 @@ func NewSqs() (*Sqs, error) {
 		QueueName: &queueName,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &Sqs{
-		sqsClient: svc,
-		queueUrl:  result.QueueUrl,
-	}, nil
+	s.sqsClient = svc
+	s.queueUrl = result.QueueUrl
+
+	return nil
 
 }
 
-func (sh Sqs) SendMessage(
+func (s Sqs) SendMessage(
 	delay int64,
 	messageAttributes map[string]*sqs.MessageAttributeValue,
 	messageBody string,
 ) error {
-	_, err := sh.sqsClient.SendMessage(&sqs.SendMessageInput{
+	_, err := s.sqsClient.SendMessage(&sqs.SendMessageInput{
 		DelaySeconds:      aws.Int64(delay),
 		MessageAttributes: messageAttributes,
 		MessageBody:       aws.String(messageBody),
-		QueueUrl:          sh.queueUrl,
+		QueueUrl:          s.queueUrl,
 	})
 	return err
 }
