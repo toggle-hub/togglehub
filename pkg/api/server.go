@@ -5,6 +5,7 @@ import (
 
 	"github.com/Roll-Play/togglelabs/pkg/api/handlers"
 	"github.com/Roll-Play/togglelabs/pkg/api/middlewares"
+	"github.com/Roll-Play/togglelabs/pkg/api/sqs_helper"
 	"github.com/Roll-Play/togglelabs/pkg/storage"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
 	"github.com/labstack/echo/v4"
@@ -66,10 +67,11 @@ func registerRoutes(app *App) {
 		&apiutils.HTTPClient{},
 		apiutils.NewOAuthClient(oauthConfig),
 	)
+
 	app.server.POST("/oauth", oauthHandler.SignIn)
 	app.server.GET("/callback", oauthHandler.Callback)
 
-	signUpHandler := handlers.NewSignUpHandler(app.storage.DB(), app.logger)
+	signUpHandler := handlers.NewSignUpHandler(app.storage.DB(), app.logger, &sqs_helper.Sqs{})
 	app.server.POST("/signup", signUpHandler.PostUser)
 
 	signInHandler := handlers.NewSignInHandler(app.storage.DB(), app.logger)

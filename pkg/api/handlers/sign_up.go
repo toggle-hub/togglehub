@@ -7,9 +7,12 @@ import (
 
 	"github.com/Roll-Play/togglelabs/pkg/api/common"
 	apierrors "github.com/Roll-Play/togglelabs/pkg/api/error"
+	"github.com/Roll-Play/togglelabs/pkg/api/sqs_helper"
 	"github.com/Roll-Play/togglelabs/pkg/config"
 	usermodel "github.com/Roll-Play/togglelabs/pkg/models/user"
 	apiutils "github.com/Roll-Play/togglelabs/pkg/utils/api_utils"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -19,12 +22,14 @@ import (
 type SignUpHandler struct {
 	db     *mongo.Database
 	logger *zap.Logger
+	sqs    sqs_helper.BaseSqs
 }
 
-func NewSignUpHandler(db *mongo.Database, logger *zap.Logger) *SignUpHandler {
+func NewSignUpHandler(db *mongo.Database, logger *zap.Logger, sqs sqs_helper.BaseSqs) *SignUpHandler {
 	return &SignUpHandler{
 		db:     db,
 		logger: logger,
+		sqs:    sqs,
 	}
 }
 
@@ -101,6 +106,39 @@ func (sh *SignUpHandler) PostUser(c echo.Context) error {
 			apierrors.InternalServerError,
 		)
 	}
+
+	err = sh.sqs.CreateSession()
+	if err != nil {
+		sh.logger.Debug("Server error",
+			zap.Error(err),
+		)
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
+	messageAttributes := map[string]*sqs.MessageAttributeValue{
+		"Title": &sqs.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String("Email validation"),
+		},
+		"UserId": &sqs.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String(ur.ID.String()),
+		},
+	}
+	err = sh.sqs.SendMessage(0, messageAttributes, "Email validation information that I'm not really sure how to generate")
+	if err != nil {
+		sh.logger.Debug("Server error",
+			zap.Error(err),
+		)
+		return apierrors.CustomError(c,
+			http.StatusInternalServerError,
+			apierrors.InternalServerError,
+		)
+	}
+
 	sh.logger.Debug("Created user",
 		zap.String("_id", objectID.Hex()),
 	)
